@@ -9,6 +9,11 @@ export const CONTROLS_HTML = `
   <kbd>오른쪽 클릭</kbd> 손전등 · <kbd>1</kbd> 냄새(이름표) · <kbd>2</kbd> 구르기 · <kbd>3</kbd> 점프 · <kbd>4</kbd> 포션<br>
   <kbd>Space</kbd> 가까운 것 사용 · 대화 넘기기 · <kbd>B</kbd> 짖기 · 구르기·점프는 강아지 간식을 먹으면 배워요<br>
   <kbd>Tab</kbd> 섬 지도 · 휠 확대 · <kbd>Esc</kbd> 메뉴`;
+export const TOUCH_CONTROLS_HTML = `
+  <kbd>땅을 톡</kbd> 걸어가기 · <kbd>조이스틱</kbd> 움직이기 · 몬스터/광석을 톡: 망치<br>
+  👃 냄새(이름표) · 🌀 구르기 · ⤴ 점프 · 🔦 손전등 · 🧪 포션<br>
+  ✋ 가까운 것 사용 · 🗺️ 섬 지도 · ☰ 메뉴 · 대화는 화면을 톡<br>
+  구르기·점프는 강아지 간식을 먹으면 배워요`;
 
 export function createScreens(G, { onRestart }) {
   const screens = G.screens = {
@@ -24,7 +29,7 @@ export function createScreens(G, { onRestart }) {
         const n = stars(G.state, st.id);
         return `<span>STAGE ${st.id} · ${st.ko}</span><span>${'★'.repeat(n)}${'☆'.repeat(3 - n)} 🦴${G.state.treats[st.id]?.length ?? 0}/3</span>`;
       }).join('');
-      $('menu-controls').innerHTML = CONTROLS_HTML;
+      $('menu-controls').innerHTML = G.touch ? TOUCH_CONTROLS_HTML : CONTROLS_HTML;
       $('btn-mute').textContent = isMuted() ? '소리 켜기' : '소리 끄기';
       $('menu').classList.remove('hidden');
     },

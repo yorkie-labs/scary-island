@@ -56,3 +56,16 @@ frustum branch of `isObserved`, `G.on('scissors')`, `state.selected`.
 
 ### Open (needs the user)
 - The folder is not a git repo yet: `git init` + a remote before deploying.
+
+### Round 3 — repo, deploy, mobile layout
+- "새로 시작" kept showing the title: the save-on-close wrote the old game
+  back during the reload → saving is off while wiping, and the new page goes
+  straight into the new game. "처음부터" two-press timer fixed (started at 0).
+- Repo `yorkie-labs/scary-island` + Pages workflow (push to main = deploy).
+- Mobile (`scripts/mobile.mjs`, iPhone 13 portrait/landscape, iPad mini):
+  touch layout under `body.touch` — bar keeps orbs/belt/diamonds only, clear
+  of the stick and buttons; portrait buttons in 3 columns; objective top-left
+  with a small minimap; touch wording (✋ prompt is tappable, "화면을 톡",
+  touch controls in the menu); touch UI hidden on the title; compact menus
+  and shop on short screens; upright phones get a slightly further camera.
+  Tap-to-move and the joystick both move Yorkie on every device.

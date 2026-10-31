@@ -98,7 +98,9 @@ export function createIsoCamera(G) {
     }
     if (camera.fov !== ISO_FOV) { camera.fov = ISO_FOV; camera.updateProjectionMatrix(); }
     const underground = G.underground?.() ?? false;
-    const dist = underground ? Math.min(rig.distance, 17) : rig.distance;
+    // an upright phone is narrow: back off a little so the sides are not cut close
+    const narrow = camera.aspect < 1 ? Math.min(1.5, 1 / Math.sqrt(camera.aspect)) : 1;
+    const dist = (underground ? Math.min(rig.distance, 17) : rig.distance) * narrow;
     focus.lerp(new THREE.Vector3(target.x, target.y + 0.6, target.z), 1 - Math.exp(-10 * dt));
     if (focus.distanceTo(target) > 30) focus.set(target.x, target.y + 0.6, target.z); // after a teleport
     const cp = Math.cos(rig.pitch);

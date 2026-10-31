@@ -55,7 +55,7 @@ export function createHud() {
   }
 
   const hud = {
-    show(v) { $('hud').classList.toggle('hidden', !v); },
+    show(v) { $('hud').classList.toggle('hidden', !v); document.body.classList.toggle('playing', v); },
 
     // set by main: 'diablo' or 'third', decides what the L/R skill icons show
 
@@ -177,7 +177,9 @@ export function createHud() {
       c.beginPath(); c.moveTo(0, -14); c.lineTo(11, 11); c.lineTo(0, 5); c.lineTo(-11, 11); c.closePath(); c.fill(); c.stroke();
       c.restore();
       c.fillStyle = 'rgba(255,248,236,.8)'; c.font = '15px Jua, sans-serif'; c.textAlign = 'center';
-      c.fillText('Tab 지도 닫기 · ⭐ 다음 목표 · 🔒 아직 닫힌 길 · 🔥 체크포인트', W / 2, H - 140);
+      if (!document.body.classList.contains('touch')) c.fillText('Tab 지도 닫기 · ⭐ 다음 목표 · 🔒 아직 닫힌 길 · 🔥 체크포인트', W / 2, H - 140);
+      // phones: under the objective box when upright; no room for it lying down
+      else if (H > W) c.fillText('🗺️ 지도 닫기 · ⭐ 다음 목표 · 🔒 닫힌 길 · 🔥 체크포인트', W / 2, 152);
     },
 
     minimap({ player, heading, target, region, underground, enemies = [], rotation = 0 }) {

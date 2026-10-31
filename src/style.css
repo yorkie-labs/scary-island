@@ -203,9 +203,67 @@ html, body, #app canvas { touch-action: none; }
 #bar { pointer-events: auto; }
 #bar .slot, #bar .orb, #bar .skill { cursor: pointer; }
 #help-hint { left: 16px; top: 14px; bottom: auto; }
-/* phones and tablets (no fine mouse): the bar sits above the joystick row */
-@media (pointer: coarse) {
-  #bar { bottom: 150px; transform: translateX(-50%) scale(0.72); transform-origin: bottom center; }
-  #prompt { bottom: 250px; }
-  #help-hint { display: none; }
+/* ---- phones and tablets (body.touch, set by ui/touch.js) ----
+   The touch buttons already hold the skills, so the bar keeps just the orbs,
+   the potion belt and the diamonds; everything sits clear of the joystick
+   (bottom left) and the buttons (bottom right). */
+body.touch #minimap-wrap { display: flex; flex-direction: column; align-items: flex-end; }
+body.touch #minimap { display: block; }
+body.touch #help-hint, body.touch #skill-left, body.touch #skill-right, body.touch #slots { display: none; }
+body.touch:not(.playing) #touch { display: none; }
+body.touch #bar { transform: translateX(-50%); }
+body.touch .orb { width: 52px; height: 52px; border-width: 3px; }
+body.touch .orb .glyph { font-size: 17px; }
+body.touch .orb .num { font-size: 11px; bottom: 5px; }
+body.touch #bar .slot { width: 34px; height: 34px; font-size: 17px; }
+body.touch #bar-row { gap: 6px; padding: 4px 8px; }
+body.touch #bar-top { font-size: 14px; padding: 2px 10px; }
+body.touch #prompt { pointer-events: auto; font-size: 17px; }
+body.touch #objective.new { animation: popTouch 0.6s; }
+@keyframes popTouch { 30% { background: rgba(255, 159, 28, 0.85); } }
+body.touch #menu-controls kbd { font: inherit; font-size: 13px; line-height: 20px; }
+
+/* upright phone: objective top-left, small minimap top-right; buttons in 3 columns */
+@media (orientation: portrait) {
+  body.touch #objective { left: 10px; right: 112px; top: 10px; transform: none; max-width: none; font-size: 15px; text-align: left; padding: 6px 12px; }
+  body.touch #minimap { width: 92px; height: 92px; border-width: 3px; }
+  body.touch #minimap-wrap { right: 10px; top: 10px; }
+  body.touch #region-name { font-size: 12px; }
+  body.touch #hover-plate { top: 118px; }
+  body.touch #toast { top: 128px; font-size: 16px; }
+  body.touch #stick { left: 18px; bottom: 24px; width: 120px; height: 120px; }
+  body.touch #knob { left: 35px; top: 35px; }
+  body.touch #touch-buttons { right: 12px; bottom: 16px; grid-template-columns: repeat(3, 52px); gap: 8px; }
+  body.touch #touch-buttons button { width: 52px; height: 52px; font-size: 21px; }
+  body.touch #bar { bottom: 196px; }
+  body.touch #prompt { bottom: 296px; }
+  body.touch #dialog { bottom: 196px; font-size: 18px; padding: 14px 18px 24px; }
+}
+/* lying down: the bar sits low between the stick and the buttons */
+@media (orientation: landscape) {
+  body.touch #objective { top: 6px; font-size: 14px; padding: 5px 14px; max-width: 46vw; }
+  body.touch #minimap { width: 84px; height: 84px; border-width: 3px; }
+  body.touch #minimap-wrap { right: 10px; top: 8px; }
+  body.touch #region-name { font-size: 12px; }
+  body.touch #hover-plate { top: 64px; }
+  body.touch #toast { top: 64px; font-size: 16px; }
+  body.touch #stick { left: 16px; bottom: 16px; width: 110px; height: 110px; }
+  body.touch #knob { left: 30px; top: 30px; }
+  body.touch #touch-buttons { right: 12px; bottom: 12px; grid-template-columns: repeat(4, 48px); gap: 6px; }
+  body.touch #touch-buttons button { width: 48px; height: 48px; font-size: 19px; }
+  body.touch #bar { bottom: 6px; }
+  body.touch #prompt { bottom: 112px; }
+  body.touch #dialog { bottom: 8px; width: min(600px, 62vw); font-size: 17px; line-height: 1.4; padding: 12px 18px 22px; }
+}
+/* short screens (phones lying down): menus and the shop get compact */
+@media (max-height: 500px) {
+  .screen { gap: 8px; padding: 10px; }
+  #menu h2, #shop h2 { font-size: 26px; }
+  #menu-stars { font-size: 14px; }
+  #menu-controls { font-size: 13px; line-height: 1.6; }
+  #shop-items { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+  .shop-item { padding: 8px 10px; gap: 4px; }
+  .shop-item h3 { font-size: 17px; }
+  .shop-item p { font-size: 13px; }
+  .screen button { padding: 7px 18px; font-size: 16px; }
 }

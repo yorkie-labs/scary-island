@@ -4,6 +4,13 @@ export function setupTouch(G) {
   if (!matchMedia('(pointer: coarse)').matches) return; // a phone or tablet, not a touch laptop
   const root = document.getElementById('touch');
   root.classList.remove('hidden');
+  // the layout and wording switch to touch (style.css: body.touch)
+  document.body.classList.add('touch');
+  G.touch = true;
+  document.getElementById('dialog-next').textContent = '▼ 화면을 톡';
+  // the "✋ use" prompt is a button too
+  const prompt = document.getElementById('prompt');
+  prompt.addEventListener('touchstart', (e) => { e.preventDefault(); G.input.trigger('Space', e); });
   const stick = document.getElementById('stick'), knob = document.getElementById('knob');
   const v = G.input.virtual;
   let id = null;

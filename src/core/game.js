@@ -226,7 +226,7 @@ export function createGame({ scene, camera, renderer, look, physics, state, inpu
         }
       }
       G.nearInteractable = near;
-      if (!G.riding?.()) hud.prompt(near ? `Space ${typeof near.label === 'function' ? near.label() : near.label}` : null);
+      if (!G.riding?.()) hud.prompt(near ? `${G.touch ? '✋' : 'Space'} ${typeof near.label === 'function' ? near.label() : near.label}` : null);
 
       if (G.mode === 'play') for (const e of G.enemies) e.update(dt);
       updateLightPool(dt);
