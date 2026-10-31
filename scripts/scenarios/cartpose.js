@@ -1,0 +1,10 @@
+await start(true); await wait(300); await skip();
+await goMark('cart', 1.5); await wait(300); await skip();
+G.state.hearts = 3; G.interact();
+for (let i = 0; i < 400 && G.markers.cart.z > -76; i++) await wait(30);
+await shot('cart-sit');
+dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+await wait(320); await shot('cart-hop');
+const r = G.player.model.userData.rig;
+log.push(['legs x', +r.legs.L.rotation.x.toFixed(2), 'arms x', +r.arms.L.rotation.x.toFixed(2), 'stage label', document.getElementById('stage-name').textContent]);
+return log;

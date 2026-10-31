@@ -1,0 +1,13 @@
+await start(false); await wait(400); await skip(); await wait(300); await skip();
+dispatchEvent(new KeyboardEvent('keydown', { code: 'AltLeft' }));
+await wait(300);
+const tags = [...document.querySelectorAll('#labels .label')].filter((e) => e.style.display !== 'none').map((e) => e.textContent);
+log.push(['labels while Alt held', JSON.stringify(tags)]);
+await shot('labels');
+const hammerTag = [...document.querySelectorAll('#labels .label')].find((e) => e.textContent === '망치' && e.style.display !== 'none');
+hammerTag?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+dispatchEvent(new KeyboardEvent('keyup', { code: 'AltLeft' }));
+await wait(6000); await skip();
+log.push(['clicked 망치 tag → has hammer', G.state.items.hammer]);
+log.push(['labels hidden after release', [...document.querySelectorAll('#labels .label')].every((e) => e.style.display === 'none')]);
+return log;

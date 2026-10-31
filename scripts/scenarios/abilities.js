@@ -1,0 +1,13 @@
+const key = (c) => { dispatchEvent(new KeyboardEvent('keydown', { code: c })); dispatchEvent(new KeyboardEvent('keyup', { code: c })); };
+await start(false); await wait(400); await skip(); await wait(300); await skip();
+log.push(['hotbar at start', [...document.querySelectorAll('#slots .slot')].map((e) => e.textContent.trim()).join(' | ')]);
+key('Digit2'); await wait(150); log.push(['2 before treat', P.state.action?.name ?? 'nothing', document.getElementById('toast').textContent]);
+const treat = G.pickups.find((p) => p.id === 'treat-beach-a');
+log.push(['tutorial treat visible', treat && !treat.hidden, 'dist from spawn', treat ? +treat.pos.distanceTo(P.position).toFixed(1) : null]);
+G.pointer.goTo(treat.model.position); for (let i = 0; i < 80 && treat.alive; i++) await wait(100);
+await wait(300); log.push(['dialog', document.getElementById('dialog-text').textContent]); await skip();
+key('Digit2'); await wait(80); log.push(['2 after treat', P.state.action?.name]); await wait(800);
+key('Digit3'); await wait(150); log.push(['3 jump (locked)', document.getElementById('toast').textContent]);
+log.push(['hotbar now', [...document.querySelectorAll('#slots .slot')].map((e) => e.textContent.trim()).join(' | ')]);
+key('Digit1'); await wait(3500); await shot('abilities-sniff');
+return log;

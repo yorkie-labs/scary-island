@@ -1,0 +1,10 @@
+await start(true); await wait(300); await skip();
+const key = (c) => { dispatchEvent(new KeyboardEvent('keydown', { code: c })); dispatchEvent(new KeyboardEvent('keyup', { code: c })); };
+log.push(['slots', [...document.querySelectorAll('#slots .slot')].map((e) => e.textContent.trim()).join(' | '), 'strip', document.getElementById('parts').textContent]);
+key('Digit2'); await wait(100); log.push(['after 2 selected', G.state.selected]);
+G.state.hearts = 2; G.state.potions = 1; G.refresh(); key('Digit3'); await wait(100); log.push(['after 3: hearts', G.state.hearts, 'potions', G.state.potions]);
+key('Digit1'); await wait(100);
+await goMark('vines', 0); await use(); await wait(800);
+log.push(['vines cut with key item', G.flag('vinesCut')]);
+await shot('scissors-bar');
+return log;

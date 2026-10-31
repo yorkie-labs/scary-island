@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Scary Island</title>
+    <meta name="description" content="Scary Island — 요크셔테리어 Yorkie를 도와 무서운 섬을 탈출하세요! 가족을 위한 귀엽고 으스스한 3D 모험 게임." />
+    <meta name="theme-color" content="#2a1d38" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <noscript><p style="padding:24px;font-size:20px">이 게임은 JavaScript가 필요해요. 브라우저 설정에서 켜 주세요.</p></noscript>
+    <div id="app"></div>
+
+    <!-- HUD (GDD §9.1) -->
+    <div id="hud" class="hidden">
+      <div id="objective"><small id="stage-name"></small><span id="objective-text"></span></div>
+      <div id="minimap-wrap"><canvas id="minimap" width="180" height="180"></canvas><div id="region-name"></div></div>
+      <!-- Diablo II style interface bar (GDD §9.1 + D2): heart orb, skills, belt, battery orb -->
+      <div id="bar">
+        <div id="bar-top">
+          <span title="다이아몬드">💎 <b id="diamonds">0</b></span>
+          <span title="열쇠" id="keys-wrap" class="hidden">🗝️ <b id="keys">0</b></span>
+          <span id="parts"></span>
+        </div>
+        <div id="bar-row">
+          <div class="orb heart" id="heart-orb" title="하트"><div class="fill"></div><div class="segs"><i></i><i></i></div><span class="glyph">❤️</span><span class="num" id="heart-num"></span></div>
+          <div class="skill" id="skill-left"><span></span><small>L</small></div>
+          <div id="slots"></div>
+          <div id="belt"></div>
+          <div class="skill" id="skill-right" data-key="Light"><span></span><small>R</small></div>
+          <div class="orb battery" id="battery-orb" title="손전등 배터리"><div class="fill"></div><span class="glyph">🔦</span><span class="num" id="battery-num"></span></div>
+        </div>
+      </div>
+      <div id="prompt" class="hidden"></div>
+      <div id="help-hint">1 냄새 · 2 구르기 · 3 점프 · 4 포션 · Tab 지도 · Esc 메뉴</div>
+      <div id="hover-plate" class="hidden"></div>
+    </div>
+
+    <canvas id="automap" class="hidden"></canvas>
+    <div id="hover-tip" class="hidden"></div>
+    <div id="toast"></div>
+    <div id="dialog" class="hidden"><div id="dialog-name"></div><div id="dialog-text"></div><div id="dialog-next">▼ Space / 클릭</div></div>
+    <div id="fade"></div>
+    <div id="card" class="hidden"></div>
+
+    <div id="title" class="screen">
+      <div id="title-art" aria-hidden="true">
+        <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice">
+          <defs>
+            <linearGradient id="t-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5fbfe6"/><stop offset="0.55" stop-color="#a9dcef"/><stop offset="0.8" stop-color="#ffd9a0"/></linearGradient>
+            <linearGradient id="t-sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4fb6cf"/><stop offset="1" stop-color="#1f6f8f"/></linearGradient>
+            <radialGradient id="t-sun"><stop offset="0.55" stop-color="#fff3c4"/><stop offset="1" stop-color="#fff3c4" stop-opacity="0"/></radialGradient>
+          </defs>
+          <rect width="1600" height="900" fill="url(#t-sky)"/>
+          <circle cx="1180" cy="560" r="150" fill="url(#t-sun)"/>
+          <g fill="#fff" opacity="0.85">
+            <ellipse cx="260" cy="190" rx="110" ry="34"/><ellipse cx="330" cy="170" rx="70" ry="40"/>
+            <ellipse cx="1320" cy="230" rx="130" ry="32"/><ellipse cx="1250" cy="214" rx="70" ry="36"/>
+            <ellipse cx="820" cy="120" rx="80" ry="22"/>
+          </g>
+          <rect y="640" width="1600" height="260" fill="url(#t-sea)"/>
+          <!-- the island: sand rim, hills, a mountain -->
+          <path d="M240 660 Q420 600 560 590 L1160 590 Q1300 600 1420 660 Z" fill="#f0d9a0"/>
+          <path d="M330 630 Q470 470 640 520 Q760 360 900 420 Q1010 300 1120 470 Q1240 500 1330 632 Z" fill="#79b85a"/>
+          <path d="M780 440 Q900 330 1000 360 Q1060 330 1120 470 Q1000 430 900 470 Z" fill="#5d9a4a"/>
+          <path d="M470 560 Q560 520 640 540 Q600 600 470 600 Z" fill="#3f7a4c"/>
+          <!-- the guardian moai, asleep on its hill -->
+          <g transform="translate(990 330)" fill="#8d8378">
+            <path d="M-26 70 L-22 6 Q-20 -24 4 -26 Q26 -24 26 4 L28 70 Z"/>
+            <rect x="-30" y="-34" width="60" height="12" rx="4" fill="#a3998d"/>
+            <rect x="-14" y="10" width="10" height="4" rx="2" fill="#6d655d"/><rect x="6" y="10" width="10" height="4" rx="2" fill="#6d655d"/>
+          </g>
+          <!-- palms -->
+          <g stroke="#8a5a2b" stroke-width="12" fill="none" stroke-linecap="round">
+            <path d="M420 640 Q410 560 450 500"/><path d="M1240 640 Q1260 560 1220 490"/><path d="M1290 650 Q1300 600 1290 560"/>
+          </g>
+          <g fill="#3f7a4c">
+            <path d="M450 500 q-70 -20 -110 20 q60 -10 110 -20z M450 500 q60 -50 120 -30 q-60 0 -120 30z M450 500 q-20 -60 -80 -70 q50 30 80 70z M450 500 q40 -10 90 30 q-50 -10 -90 -30z"/>
+            <path d="M1220 490 q-70 -20 -110 20 q60 -10 110 -20z M1220 490 q60 -50 120 -30 q-60 0 -120 30z M1220 490 q-20 -60 -80 -70 q50 30 80 70z M1220 490 q40 -10 90 30 q-50 -10 -90 -30z"/>
+            <path d="M1290 560 q-50 -14 -80 14 q40 -6 80 -14z M1290 560 q44 -36 86 -20 q-44 0 -86 20z M1290 560 q30 -6 64 22 q-36 -8 -64 -22z"/>
+          </g>
+          <!-- Yorkie's little boat, and the waves -->
+          <g transform="translate(180 700)"><path d="M0 0 L120 0 L100 26 L20 26 Z" fill="#b5651d"/><path d="M58 -6 L58 -96 L112 -10 Z" fill="#fff8ec"/><rect x="54" y="-100" width="6" height="100" fill="#6b4a2b"/></g>
+          <g stroke="#fff" stroke-width="5" fill="none" opacity="0.45" stroke-linecap="round">
+            <path d="M120 780 q30 -14 60 0 t60 0"/><path d="M620 720 q30 -14 60 0 t60 0"/><path d="M1060 800 q30 -14 60 0 t60 0"/><path d="M1380 730 q30 -14 60 0 t60 0"/>
+          </g>
+        </svg>
+      </div>
+      <h1>SCARY ISLAND</h1>
+      <p class="tagline">Find the Way Out!</p>
+      <div id="title-buttons">
+        <button id="btn-continue" class="hidden">이어하기</button>
+        <button id="btn-new">새로 시작</button>
+      </div>
+      <p id="loading-text">섬을 불러오는 중…</p>
+    </div>
+
+    <div id="menu" class="screen hidden">
+      <h2>잠깐 쉬어요</h2>
+      <div id="menu-stars"></div>
+      <div id="menu-controls"></div>
+      <div class="row">
+        <button id="btn-resume">계속하기</button>
+        <button id="btn-mute">소리 끄기</button>
+        <button id="btn-restart">처음부터</button>
+      </div>
+    </div>
+
+    <div id="shop" class="screen hidden">
+      <h2>🦜 폴리의 가게</h2>
+      <p>"다이아몬드를 가져오면 좋은 걸 줄게!"</p>
+      <div id="shop-items"></div>
+      <button id="btn-shop-close">닫기</button>
+    </div>
+
+    <div id="touch" class="hidden">
+      <div id="stick"><div id="knob"></div></div>
+      <div id="touch-buttons">
+        <button data-key="Digit1" title="냄새">👃</button>
+        <button data-key="Digit2" title="구르기">🌀</button>
+        <button data-key="Digit3" title="점프">⤴</button>
+        <button data-key="Light" title="손전등">🔦</button>
+        <button data-key="Digit4" title="포션">🧪</button>
+        <button data-key="Space" title="사용">✋</button>
+        <button data-key="Tab" title="지도">🗺️</button>
+        <button data-key="Escape" title="메뉴">☰</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
