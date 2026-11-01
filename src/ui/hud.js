@@ -92,6 +92,15 @@ export function createHud() {
           ? `<div class="slot locked-ability" data-key="Digit${i + 1}" title="${t.ko}: 강아지 간식 ${need}개 더 먹으면 배워요"><small>${i + 1}</small>🔒<b>🦴${need}</b></div>`
           : `<div class="slot" data-key="Digit${i + 1}" title="${t.ko} (${i + 1})"><small>${i + 1}</small>${t.icon}</div>`;
       }).join('');
+      // touch buttons: locked until Yorkie has the item or the ability
+      // (🔒 for an item still to find, 🦴n for treats still to eat)
+      const lock = { Hammer: state.items.hammer ? '' : '🔒', Light: state.items.flashlight ? '' : '🔒' };
+      for (const t of ACTIONS) { const need = ABILITY_TREATS[t.key] - treatsEaten(state); lock[`Digit${ACTIONS.indexOf(t) + 1}`] = need > 0 ? `🦴${need}` : ''; }
+      for (const b of document.querySelectorAll('#touch-buttons button')) {
+        const badge = lock[b.dataset.key] ?? '';
+        b.classList.toggle('locked', !!badge);
+        if (badge) b.dataset.badge = badge; else delete b.dataset.badge;
+      }
       const max = maxPotions(state);
       $('belt').innerHTML = Array.from({ length: max }, (_, i) => `<div class="slot ${i < state.potions ? '' : 'empty'}" data-key="Digit4" title="하트 포션 (4)">${i === 0 ? '<small>4</small>' : ''}🧪</div>`).join('');
       // key items you just carry (the scissors open the vines by themselves)
@@ -118,8 +127,9 @@ export function createHud() {
       root.setProperty('--bar-bottom', `${Math.round($('bar').getBoundingClientRect().bottom)}px`);
     },
 
-    // every frame bits: the flashlight battery orb
-    tick({ battery = 0, hasLight = false }) {
+    // every frame bits: the flashlight battery orb, the roll cooldown
+    tick({ battery = 0, hasLight = false, rollCooldown = 0 }) {
+      for (const el of document.querySelectorAll('#touch-buttons [data-key="Digit2"], #slots [data-key="Digit2"]')) el.style.setProperty('--cd', rollCooldown.toFixed(3));
       const orb = $('battery-orb');
       orb.classList.toggle('empty', !hasLight);
       orb.querySelector('.fill').style.height = `${hasLight ? battery : 0}%`;

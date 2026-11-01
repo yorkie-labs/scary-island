@@ -11,6 +11,9 @@ const RADIUS = 0.24;
 const HEIGHT = 1.0;
 const SKIN = 0.04;
 const INVULNERABLE_AFTER_HIT = 1.6;
+// a roll makes Yorkie unhittable for a moment, so it comes back slowly:
+// at most one roll every ROLL_COOLDOWN seconds (shown on the 🌀 button)
+export const ROLL_COOLDOWN = 1.5;
 
 export const ACTIONS = {
   swing: { duration: 0.45, cooldown: 0.1 },
@@ -49,7 +52,7 @@ export function createPlayer(G, spawn) {
     vy: 0, grounded: true, speed: 0, heading: spawn.heading ?? Math.PI,
     action: null, cooldown: 0, jumpQueued: false,
     knock: new THREE.Vector2(), invulnerable: 0, hidden: false, frozen: false,
-    stepTimer: 0, wasGrounded: true,
+    stepTimer: 0, wasGrounded: true, rollReady: 0,
   };
   const safe = new THREE.Vector3(spawn.x, spawn.y, spawn.z);
   let safeTimer = 0;
@@ -59,10 +62,10 @@ export function createPlayer(G, spawn) {
     if (s.frozen) return false;
     if (s.action && s.action.name !== 'hurt' && name !== 'hurt') return false;
     if (s.cooldown > 0 && name !== 'hurt') return false;
-    if (name === 'roll' && !s.grounded) return false;
+    if (name === 'roll' && (!s.grounded || G.time < s.rollReady)) return false;
     if ((name === 'roll' || name === 'sniff') && !G.canUse(name)) return false;
     s.action = { name, t: 0, duration: ACTIONS[name].duration, fired: false };
-    if (name === 'roll') { sfx.roll(); s.invulnerable = Math.max(s.invulnerable, 0.5); }
+    if (name === 'roll') { sfx.roll(); s.invulnerable = Math.max(s.invulnerable, 0.5); s.rollReady = G.time + ROLL_COOLDOWN; }
     if (name === 'swing') sfx.swing();
     if (name === 'bark') { sfx.bark(); G.emit('noise', { pos: model.position.clone(), radius: 16, kind: 'bark' }); }
     if (name === 'sniff') { sfx.sniff(); G.emit('sniff', { pos: model.position.clone() }); }
@@ -189,5 +192,7 @@ export function createPlayer(G, spawn) {
     get position() { return model.position; },
     get facing() { return forward.set(Math.sin(s.heading), 0, Math.cos(s.heading)); },
     get safe() { return safe; },
+    // 0 when a roll is ready, up to 1 right after one
+    get rollCooldown() { return Math.max(0, (s.rollReady - G.time) / ROLL_COOLDOWN); },
   };
 }

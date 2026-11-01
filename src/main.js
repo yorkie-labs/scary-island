@@ -242,7 +242,7 @@ async function boot() {
     musicTimer -= dt;
     if (musicTimer <= 0 && G.mode !== 'title') {
       musicTimer = 0.1;
-      hud.tick({ battery: G.battery ?? 0, hasLight: state.items.flashlight });
+      hud.tick({ battery: G.battery ?? 0, hasLight: state.items.flashlight, rollCooldown: G.player.rollCooldown });
       hud.automap({
         show: G.showMap && G.mode !== 'title' && G.mode !== 'menu', player: G.player.position, heading: G.player.state.heading,
         target: currentObjective(state)?.step.at ? G.markers[currentObjective(state).step.at] : null,

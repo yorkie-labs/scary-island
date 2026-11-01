@@ -149,6 +149,17 @@ kbd { display: inline-block; min-width: 22px; padding: 0 6px; border-radius: 6px
 #touch-buttons [data-key="Light"] { right: 122px; bottom: 166px; }
 #touch-buttons [data-key="Digit1"] { right: 62px; bottom: 182px; }
 #touch-buttons button:active { transform: translate(50%, calc(50% + 2px)); }
+/* not yours yet: dimmed, with a badge for what it takes (🔒 an item, 🦴n treats) */
+#touch-buttons button.locked { opacity: 0.5; filter: grayscale(1); }
+#touch-buttons button[data-badge]::after {
+  content: attr(data-badge); position: absolute; right: -4px; bottom: -4px; font-size: 12px; line-height: 1; padding: 3px 5px;
+  border-radius: 999px; background: var(--panel-solid); color: #fff; filter: none;
+}
+/* the roll cooldown: a dark sweep that runs out (--cd from 1 to 0, set by hud.tick) */
+#touch-buttons [data-key="Digit2"]::before, #slots [data-key="Digit2"]::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: conic-gradient(rgba(20, 12, 34, 0.6) calc(var(--cd, 0) * 360deg), transparent 0);
+}
 /* map and menu: small, under the minimap */
 #touch-top { position: absolute; display: flex; gap: 6px; pointer-events: auto; }
 #touch-top button { width: 44px; height: 44px; padding: 0; font-size: 19px; background: rgba(255, 255, 255, 0.75); }
