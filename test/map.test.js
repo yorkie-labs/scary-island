@@ -28,13 +28,38 @@ describe('island map', () => {
   });
 });
 
-import { ridgeWallPieces } from '../src/world/walls.js';
+import { ridgeWallPieces, GATE_CLEAR } from '../src/world/walls.js';
+import { RIDGES, shoreRadius } from '../src/world/map.js';
 describe('ridge walls', () => {
   const pieces = ridgeWallPieces();
-  it('leave every gate open', () => {
+  // a piece is a box: len along ry, 0.8 m to each side
+  const covers = (p, x, z) => {
+    const ax = Math.sin(p.ry), az = Math.cos(p.ry);
+    const along = (x - p.x) * ax + (z - p.z) * az, across = (x - p.x) * az - (z - p.z) * ax;
+    return Math.abs(along) <= p.len / 2 + 1e-6 && Math.abs(across) <= 0.8;
+  };
+  it('leave every gate open (nothing within GATE_CLEAR of one)', () => {
     for (const [name, g] of Object.entries(GATES)) {
-      const near = pieces.filter((p) => Math.hypot(p.x - g.x, p.z - g.z) < 3.6);
-      expect(near, name).toEqual([]);
+      for (let a = 0; a < Math.PI * 2; a += 0.1) {
+        for (let d = 0; d < GATE_CLEAR - 0.05; d += 0.25) {
+          const x = g.x + Math.sin(a) * d, z = g.z + Math.cos(a) * d;
+          expect(pieces.some((p) => covers(p, x, z)), `${name} at ${d.toFixed(2)} m`).toBe(false);
+        }
+      }
+    }
+  });
+  it('leave no hole beside a gate (every point of a ridge is walled or within a gate)', () => {
+    for (const r of RIDGES) {
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const [ax, az] = r.pts[i], [bx, bz] = r.pts[i + 1];
+        const len = Math.hypot(bx - ax, bz - az);
+        for (let s = 0; s <= len; s += 0.2) {
+          const x = ax + ((bx - ax) * s) / len, z = az + ((bz - az) * s) / len;
+          if (Math.hypot(x, z) > shoreRadius(x, z) + 6) continue; // out at sea
+          if (Object.values(GATES).some((g) => Math.hypot(x - g.x, z - g.z) < GATE_CLEAR + 0.01)) continue;
+          expect(pieces.some((p) => covers(p, x, z)), `hole at ${x.toFixed(1)}, ${z.toFixed(1)}`).toBe(true);
+        }
+      }
     }
   });
   it('cover the ridges between the gates', () => {

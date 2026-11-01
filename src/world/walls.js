@@ -3,20 +3,41 @@ import { place } from './models.js';
 import { rng } from './scatter.js';
 
 // Invisible walls along each ridge crest, so no amount of jumping gets a
-// player over a ridge and past a gate. Gaps are left at the gates.
-export function ridgeWallPieces({ step = 3, gateClear = 5 } = {}) {
+// player over a ridge and past a gate. Each wall stops exactly GATE_CLEAR from
+// a gate: every gate's own blocker (pillars, vines, a slab, the barrier) is at
+// least that wide, so a shut gate has no gap beside it, and an open one
+// leaves a 6 m way through. (Dropping whole pieces near a gate left holes.)
+export const GATE_CLEAR = 3.0;
+export function ridgeWallPieces({ step = 3, gateClear = GATE_CLEAR } = {}) {
   const pieces = [];
+  const gates = Object.values(GATES);
   for (const r of RIDGES) {
     for (let i = 0; i < r.pts.length - 1; i++) {
       const [ax, az] = r.pts[i], [bx, bz] = r.pts[i + 1];
       const len = Math.hypot(bx - ax, bz - az);
-      const n = Math.max(1, Math.ceil(len / step));
-      for (let k = 0; k < n; k++) {
-        const t = (k + 0.5) / n;
-        const x = ax + (bx - ax) * t, z = az + (bz - az) * t;
-        if (Object.values(GATES).some((g) => Math.hypot(x - g.x, z - g.z) < gateClear)) continue;
-        if (Math.hypot(x, z) > shoreRadius(x, z) + 10) continue; // deep sea does the job out there
-        pieces.push({ x, z, y: heightAt(x, z), len: len / n + 0.6, ry: Math.atan2(bx - ax, bz - az) });
+      const dx = (bx - ax) / len, dz = (bz - az) / len;
+      // where this stretch passes within gateClear of a gate: [from, to] along it
+      const cuts = [];
+      for (const g of gates) {
+        const t = (g.x - ax) * dx + (g.z - az) * dz, d = Math.abs((g.x - ax) * dz - (g.z - az) * dx);
+        if (d < gateClear) { const h = Math.sqrt(gateClear ** 2 - d ** 2); cuts.push([t - h, t + h]); }
+      }
+      let runs = [[0, len]];
+      for (const [c0, c1] of cuts) {
+        runs = runs.flatMap(([s0, s1]) => (c1 <= s0 || c0 >= s1 ? [[s0, s1]] : [[s0, c0], [c1, s1]].filter(([u, w]) => w - u > 0.05)));
+      }
+      const atGap = (u) => cuts.some(([c0, c1]) => Math.abs(u - c0) < 1e-6 || Math.abs(u - c1) < 1e-6);
+      for (const [s0, s1] of runs) {
+        const n = Math.max(1, Math.ceil((s1 - s0) / step));
+        for (let k = 0; k < n; k++) {
+          // pieces overlap a little where they meet, but never reach into a gap
+          let u = s0 + ((s1 - s0) * k) / n, w = s0 + ((s1 - s0) * (k + 1)) / n;
+          if (!atGap(u)) u -= 0.3;
+          if (!atGap(w)) w += 0.3;
+          const m = (u + w) / 2, x = ax + dx * m, z = az + dz * m;
+          if (Math.hypot(x, z) > shoreRadius(x, z) + 10) continue; // deep sea does the job out there
+          pieces.push({ x, z, y: heightAt(x, z), len: w - u, ry: Math.atan2(bx - ax, bz - az) });
+        }
       }
     }
   }
