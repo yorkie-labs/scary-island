@@ -76,4 +76,4 @@ renderer.setAnimationLoop(() => {
   look.update();
   renderer.render(scene, camera);
 });
-window.gallery = { entries, show };
+window.gallery = { entries, show, camera, controls };
