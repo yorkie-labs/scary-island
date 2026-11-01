@@ -30,11 +30,16 @@ const SAVES = {
 async function player(name) {
   const ctx = await browser.createBrowserContext();
   const page = await ctx.newPage();
+  // the save goes in on a page of the same site that doesn't run the game:
+  // a booting game that read an empty save would write it back over this one.
+  // (Opening the bare SVG makes Chrome ask for /favicon.ico: answer it here.)
+  await page.setRequestInterception(true);
+  page.on('request', (r) => (r.url().endsWith('/favicon.ico') ? r.respond({ status: 204 }) : r.continue()));
+  await page.goto(new URL('favicon.svg', url).href);
+  await page.evaluate((s) => { localStorage.clear(); localStorage.setItem('scary-island-save-v1', s); }, JSON.stringify(SAVES[name]));
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error' || /YORKIE W/.test(m.text())) errors.push(m.text()); });
-  await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await page.evaluate((s) => { localStorage.clear(); localStorage.setItem('scary-island-save-v1', s); }, JSON.stringify(SAVES[name]));
   return { name, page, errors, ctx };
 }
 const loaded = (p) => p.page.waitForFunction(() => window.G && document.getElementById('loading-text').textContent === '', { timeout: 120000 });
@@ -55,7 +60,7 @@ try {
   const A = await player('A'), B = await player('B'), C = await player('C');
 
   // A makes a public game from the lobby
-  await A.page.reload(); await loaded(A);
+  await A.page.goto(url); await loaded(A);
   await click(A, '#btn-coop');
   await A.page.waitForSelector('#coop:not(.hidden)');
   await click(A, '#coop-create');
@@ -65,7 +70,7 @@ try {
   check('A created a game and owns it', game.owner && game.host, JSON.stringify(game));
 
   // B finds it in the game list and joins
-  await B.page.reload(); await loaded(B);
+  await B.page.goto(url); await loaded(B);
   await click(B, '#btn-coop');
   await B.page.waitForFunction((id) => [...document.querySelectorAll('.coop-game')].length > 0, { timeout: 30000 }, game.id).catch(() => {});
   const listed = await B.page.evaluate(() => [...document.querySelectorAll('.coop-game')].map((b) => b.textContent));

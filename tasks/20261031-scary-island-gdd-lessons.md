@@ -83,3 +83,13 @@
   sleep first, then show the line, so nothing hits during the dialogue.
 - Title/menu backdrops should show the game's world (island, sea, sun), not a
   generic gradient; check them with a screenshot like any other screen.
+
+- Don't call a failure "a network blip" until a rerun proves it. The same two
+  checks failed again later; the cause was a race in the test harness (it wrote
+  a save while the page was booting, and the boot's first checkpoint save
+  wrote over it). A failure that repeats with the same shape is a bug.
+- Seed a test save on a same-origin page that doesn't run the game, never on
+  a page that is booting.
+- Yorkie SDK 0.7.25: `await client.attach(channel)` resolves before the channel
+  says attached. Never call the network from the render loop in a way that can
+  throw: one exception per frame stalls everything else.
