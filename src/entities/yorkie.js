@@ -8,8 +8,8 @@ import { addOutline } from './outline.js';
 // it can be animated by hand (no skeleton needed).
 
 export const YORKIE_COLORS = {
-  fur: '#e3a24f', furDark: '#6e4224', muzzle: '#f4dcae', eye: '#3d220f', nose: '#1d1612',
-  hoodie: '#8fd3f4', hoodieDark: '#6bb6db', string: '#ffffff', silk: '#f0b866', bow: '#ff4d6d',
+  fur: '#e3a24f', furDark: '#6e4224', muzzle: '#f8e6c4', eye: '#3d220f', nose: '#1d1612',
+  hoodie: '#8fd3f4', hoodieDark: '#6bb6db', string: '#ffffff', silk: '#f2c27a',
   pants: '#26262b', pocket: '#34343b', shoe: '#18181b', sole: '#f2f2f2',
   wood: '#b07a46', woodDark: '#7a5230', band: '#8c8f96',
 };
@@ -82,9 +82,12 @@ export function createYorkie() {
   for (const side of [-1, 1]) {
     torso.add(mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.09, 4), C.string, { x: side * 0.035, y: 0.24, z: 0.15 }));
   }
-  // Tail peeking out under the hoodie.
+  // the fur bib spilling out of the hood at the chest
+  for (const [x, rz] of [[-0.05, 0.25], [0, 0], [0.05, -0.25]]) torso.add(mesh(new THREE.ConeGeometry(0.045, 0.11, 4), C.silk, { x, y: 0.27, z: 0.12, rx: Math.PI - 0.5, rz }));
+  // a fluffy tail peeking out under the hoodie
   const tail = pivot('tail', 0, 0.02, -0.15);
-  tail.add(mesh(new THREE.ConeGeometry(0.04, 0.14, 6), C.furDark, { y: 0.07, rx: -0.3 }));
+  tail.add(mesh(new THREE.ConeGeometry(0.055, 0.16, 5), C.fur, { y: 0.08, rx: -0.3 }));
+  tail.add(mesh(new THREE.ConeGeometry(0.035, 0.12, 4), C.furDark, { y: 0.12, z: -0.03, rx: -0.6 }));
   torso.add(tail);
 
   // Arms: hoodie sleeves with furry paws. The right paw holds the hammer.
@@ -92,7 +95,7 @@ export function createYorkie() {
   for (const side of [-1, 1]) {
     const arm = pivot(side < 0 ? 'armL' : 'armR', side * 0.18, 0.26, 0);
     arm.add(mesh(new THREE.CylinderGeometry(0.048, 0.05, 0.2, 6), C.hoodie, { y: -0.1 }));
-    arm.add(mesh(new THREE.IcosahedronGeometry(0.05, 0), C.fur, { y: -0.22 }));
+    arm.add(mesh(new THREE.IcosahedronGeometry(0.062, 0), C.fur, { y: -0.225 })); // a fluffy paw
     torso.add(arm);
     arms[side < 0 ? 'L' : 'R'] = arm;
   }
@@ -111,41 +114,43 @@ export function createYorkie() {
   neck.add(head);
   head.add(mesh(new THREE.IcosahedronGeometry(0.25, 1), C.fur, { sx: 1.05, sy: 0.95 }));
   head.add(mesh(new THREE.IcosahedronGeometry(0.235, 1), C.furDark, { z: -0.06, y: 0.04, sx: 1.04 }));
-  // Yorkshire terrier "furnishings": long silky hair falling from the cheeks
-  // to the shoulders, a drooping moustache and beard, and the top knot tied
-  // with a red bow. Each lock hangs from a pivot so it can
-  // swing (see the animator).
-  const locks = [];
-  const lock = (x, y, z, len, r, { rz = 0, rx = 0, color = C.silk } = {}) => {
-    const p = pivot('lock', x, y, z);
-    p.rotation.set(rx, 0, rz);
-    p.add(mesh(new THREE.ConeGeometry(r, len, 5), color, { y: -len / 2, rx: Math.PI }));
+  // A Yorkie's fluff, low-poly: short spiky tufts all round the head (a messy
+  // crown, cheek fur flaring out, darker at the back) give the jagged, wider-
+  // than-tall outline of the breed, instead of a smooth ball.
+  const UP = new THREE.Vector3(0, 1, 0);
+  const tuft = (dx, dy, dz, len, r, color, at = 0.23) => {
+    const dir = new THREE.Vector3(dx, dy, dz).normalize();
+    const p = pivot('tuft', dir.x * at * 1.08, dir.y * at, dir.z * at);
+    p.quaternion.setFromUnitVectors(UP, dir);
+    // short, wide and a little flat: soft strands, not spikes
+    p.add(mesh(new THREE.ConeGeometry(r, len, 4), color, { y: len / 2 - 0.03, sz: 0.65 }));
     head.add(p);
-    locks.push(p);
-    return p;
   };
+  // the crown: a messy forelock, tipping forward
+  tuft(0, 1, 0.6, 0.12, 0.075, C.silk);
+  tuft(0.4, 1, 0.4, 0.1, 0.07, C.silk);
+  tuft(-0.4, 1, 0.45, 0.1, 0.07, C.silk);
+  tuft(0.1, 1, -0.3, 0.09, 0.07, C.fur);
+  tuft(0, 0.55, 0.85, 0.08, 0.06, C.silk); // the fringe over the brow
   for (const side of [-1, 1]) {
-    lock(side * 0.2, 0.0, 0.07, 0.3, 0.075, { rz: side * 0.18 }); // the long cheek hair
-    lock(side * 0.21, 0.07, -0.04, 0.32, 0.07, { rz: side * 0.22 });
-    lock(side * 0.16, 0.05, -0.15, 0.28, 0.07, { rz: side * 0.16, color: C.fur });
-    lock(side * 0.21, -0.06, 0.0, 0.26, 0.06, { rz: side * 0.1 }); // a fuller fall at the jaw
-    lock(side * 0.07, -0.13, 0.24, 0.16, 0.045, { rz: side * 0.2, rx: 0.05 }); // the moustache, draping down
+    // cheek fur flaring out and falling down: the wide Yorkie face
+    tuft(side, -0.45, 0.3, 0.11, 0.08, C.silk);
+    tuft(side * 0.85, -0.95, 0.3, 0.1, 0.075, C.silk);
+    tuft(side, 0.05, -0.15, 0.1, 0.075, C.fur);
+    tuft(side * 0.55, -0.35, -0.8, 0.09, 0.07, C.furDark); // darker at the back
+    tuft(side * 0.35, -1, 0.5, 0.08, 0.06, C.silk); // the jaw
   }
-  lock(0, -0.16, 0.21, 0.16, 0.06, { rx: 0.2 }); // the beard
-  // the top knot, tied with a bow
-  head.add(mesh(new THREE.ConeGeometry(0.075, 0.15, 6), C.silk, { y: 0.27, z: 0.02, rx: 0.15 }));
-  const bow = pivot('bow', 0, 0.255, 0.04);
-  for (const side of [-1, 1]) bow.add(mesh(new THREE.ConeGeometry(0.05, 0.1, 4), C.bow, { x: side * 0.055, rz: side * Math.PI / 2, sy: 1, sz: 0.5 }));
-  bow.add(mesh(new THREE.IcosahedronGeometry(0.028, 0), C.bow));
-  head.add(bow);
   head.add(mesh(new THREE.IcosahedronGeometry(0.13, 1), C.muzzle, { y: -0.08, z: 0.17, sx: 1.1, sy: 0.8 }));
   head.add(mesh(new THREE.IcosahedronGeometry(0.04, 0), C.nose, { y: -0.04, z: 0.29 }));
+  // a little smile under the nose
+  head.add(mesh(new THREE.TorusGeometry(0.03, 0.007, 4, 8, Math.PI), C.nose, { y: -0.095, z: 0.283, rz: Math.PI, sx: 1.2 }));
   // big round eyes with a highlight
   const eyes = [];
   for (const side of [-1, 1]) {
     const eye = pivot('eye', side * 0.1, 0.03, 0.2);
-    eye.add(mesh(new THREE.SphereGeometry(0.06, 10, 8), C.eye, { sz: 0.6, extra: { roughness: 0.3 } }));
-    eye.add(mesh(new THREE.SphereGeometry(0.018, 6, 4), '#ffffff', { x: side * -0.012, y: 0.022, z: 0.035, extra: { emissive: '#ffffff', emissiveIntensity: 0.4 } }));
+    eye.add(mesh(new THREE.SphereGeometry(0.07, 10, 8), C.eye, { sz: 0.6, extra: { roughness: 0.25 } }));
+    eye.add(mesh(new THREE.SphereGeometry(0.024, 6, 4), '#ffffff', { x: side * -0.016, y: 0.026, z: 0.04, extra: { emissive: '#ffffff', emissiveIntensity: 0.5 } }));
+    eye.add(mesh(new THREE.SphereGeometry(0.01, 5, 3), '#ffffff', { x: side * 0.018, y: -0.022, z: 0.04, extra: { emissive: '#ffffff', emissiveIntensity: 0.5 } }));
     head.add(eye);
     eyes.push(eye);
   }
@@ -160,7 +165,7 @@ export function createYorkie() {
     ears.push(ear);
   }
 
-  root.userData.rig = { body, hips, torso, neck, head, legs, arms, hand, hammer, tail, ears, eyes, locks };
+  root.userData.rig = { body, hips, torso, neck, head, legs, arms, hand, hammer, tail, ears, eyes };
   addOutline(root, { thickness: 0.018, minSize: 0.05 });
   return root;
 }
@@ -202,11 +207,6 @@ export function createYorkieAnimator(root) {
     r.neck.rotation.set(-run * 0.12 + Math.sin(time * 1.7) * 0.03, 0, 0);
     r.tail.rotation.set(0, 0, Math.sin(time * (moving ? 18 : 9)) * 0.5);
     for (const [i, ear] of r.ears.entries()) ear.rotation.x = Math.sin(time * 3 + i) * 0.05 - run * 0.4;
-    // the silky hair sways, and streams back when running
-    for (const [i, l] of (r.locks ?? []).entries()) {
-      l.userData.rx0 ??= l.rotation.x;
-      l.rotation.x = l.userData.rx0 + Math.sin(time * (moving ? 9 : 2.2) + i * 0.7) * (moving ? 0.12 : 0.04) - run * 0.45;
-    }
 
     if (!grounded) {
       const up = vy > 0;
