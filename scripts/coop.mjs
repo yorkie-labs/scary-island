@@ -187,10 +187,10 @@ try {
   await B.page.evaluate(() => G.screens.openMenu());
   const menu = await B.page.evaluate(() => [...document.querySelectorAll('#menu-coop-players span')].map((s) => s.textContent));
   check('the menu lists 3 players and the owner', menu.length === 3 && menu.some((t) => t.startsWith('👑')), JSON.stringify(menu));
-  check('only the owner can close the game', await B.page.evaluate(() => document.getElementById('btn-close-game').classList.contains('hidden'))
-    && await A.page.evaluate(() => { G.screens.openMenu(); return !document.getElementById('btn-close-game').classList.contains('hidden'); }));
+  check('no closing a game on friends (Diablo II): everyone just leaves',
+    !(await B.page.evaluate(() => document.getElementById('btn-close-game'))) && await B.page.evaluate(() => !document.getElementById('btn-leave').classList.contains('hidden')));
   await B.page.screenshot({ path: `${out}/3-menu.png` });
-  await A.page.evaluate(() => G.screens.closeMenu());
+  await B.page.evaluate(() => G.screens.closeMenu());
 
   // B leaves: the others see one friend
   await B.page.evaluate(() => G.screens.onLeave());
@@ -198,10 +198,13 @@ try {
   await A.page.waitForFunction(() => G.friends.count === 1, { timeout: 15000 }).catch(() => {});
   check('B left: A sees one friend', (await friendsOf(A)) === 1 && (await friendsOf(C)) === 1);
 
-  // the owner closes the game: C is sent home, the lobby forgets it
-  await A.page.evaluate(() => G.screens.onCloseGame());
+  // the owner leaves: C plays on (and takes over the monsters), then C is
+  // the last one out and the lobby forgets the game
+  await A.page.evaluate(() => G.screens.onLeave());
+  await C.page.waitForFunction(() => G.simulating() && G.friends.count === 0, { timeout: 20000 }).catch(() => {});
+  check('the owner left: C plays on as the host', await C.page.evaluate(() => !!G.net && G.mode !== 'title' && G.simulating()));
+  await C.page.evaluate(() => G.screens.onLeave());
   await C.page.waitForFunction(() => !location.search.includes('game='), { timeout: 20000 }).catch(() => {});
-  check('closing sends C home', !(await C.page.evaluate(() => location.search.includes('game='))));
   await loaded(B);
   await click(B, '#btn-coop');
   await wait(4000);

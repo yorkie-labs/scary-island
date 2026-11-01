@@ -132,7 +132,7 @@ async function boot() {
     G.coop = setupCoop(G, net, own, {
       onEnd: async (reason) => {
         save(state);
-        await hud.card(`<h2>${reason === 'full' ? '게임이 꽉 찼어요' : '게임이 끝났어요'}</h2><p>${reason === 'full' ? '다른 게임을 골라 봐요!' : '방장이 게임을 닫았어요. 다음에 또 같이 놀아요!'}</p>`, 3200);
+        await hud.card(`<h2>${reason === 'full' ? '게임이 꽉 찼어요' : '게임이 끝났어요'}</h2><p>${reason === 'full' ? '다른 게임을 골라 봐요!' : '다음에 또 같이 놀아요!'}</p>`, 3200);
         home();
       },
     });
@@ -190,7 +190,6 @@ async function boot() {
   $('btn-coop').onclick = () => { initAudio(); resumeAudio(); titleButtons(false); lobby.open(); };
   if (net) {
     screens.onLeave = async () => { save(state); await net.leave(); home(); };
-    screens.onCloseGame = async () => { save(state); await net.close(); home(); };
     titleButtons(false);
     // straight in from the lobby; sound wakes with the first click
     const wake = () => { resumeAudio(); removeEventListener('pointerdown', wake); removeEventListener('keydown', wake); };

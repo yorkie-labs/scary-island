@@ -3,9 +3,10 @@ import { publishGame } from './lobby.js';
 import { docKey, idToCode, electHost, mustLeave, HEARTBEAT_MS, safeName, safeColor } from './share.js';
 
 // One game (Diablo II style): a Yorkie document per game, everyone's Yorkie in
-// its presence. The creator owns it and can close it; the host (the owner while
-// here, else an agreed player) keeps the public lobby entry fresh. The last
-// player out removes the document, so a game lives only while it is played.
+// its presence. The world starts from the creator's (the owner's) progress;
+// the host (the owner while here, else an agreed player) runs the monsters
+// and keeps the public lobby entry fresh. Nobody closes a game on friends:
+// the last player out removes the document.
 
 const SEND_MS = 125; // presence at most 8 times a second
 
@@ -71,6 +72,7 @@ export async function joinGame({ id, create = false, secret = false, profile, st
       }
     }),
     doc.subscribe((e) => { if (e.type === 'remote-change') emit('shared', net.shared()); }),
+    // removed under us (it should only go with the last player; to be safe)
     doc.subscribe('status', (e) => { if (e.value?.status === 'removed' || e.value === 'removed') end('closed'); }),
   ];
 
@@ -149,16 +151,6 @@ export async function joinGame({ id, create = false, secret = false, profile, st
         await writeLobby(null);
         await client.remove(doc).catch(() => client.detach(doc).catch(() => {}));
       } else await client.detach(doc).catch(() => {});
-    },
-    // the owner ends the game for everyone: the others see it removed
-    async close() {
-      if (!net.isOwner || ended) return;
-      ended = true;
-      clearInterval(heartbeat); clearTimeout(lobbyTimer);
-      for (const off of unsubs) off();
-      await dropChannel();
-      await writeLobby(null);
-      await client.remove(doc).catch(() => {});
     },
     // the tab is closing: tell the server now so friends see us go
     goodbye() {

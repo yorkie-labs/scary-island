@@ -75,36 +75,32 @@ export function createScreens(G, { onRestart }) {
     });
   }
 
-  // playing together: the game's code, who is here, leave or (owner) close
+  // playing together: the game's code (and a link to share it), who is here,
+  // and leaving. Like Diablo II there is no closing a game on friends: it
+  // ends when the last one leaves.
   function renderCoop() {
     const net = G.net;
     $('menu-title').textContent = net ? '메뉴 (게임은 계속돼요!)' : '잠깐 쉬어요';
     $('menu-coop').classList.toggle('hidden', !net);
     $('btn-restart').classList.toggle('hidden', !!net); // no wiping the character mid-game
+    $('btn-leave').classList.toggle('hidden', !net);
     if (!net) return;
     const label = document.createElement('b');
     label.textContent = net.secret ? '🔒 코드' : '코드';
-    $('menu-coop-code').replaceChildren(label, ...net.code.map((e) => Object.assign(document.createElement('span'), { textContent: e })));
+    const copy = Object.assign(document.createElement('button'), { id: 'btn-copy-link', textContent: '링크 복사' });
+    copy.onclick = () => {
+      const url = `${location.origin}${location.pathname}?game=${net.id}`;
+      navigator.clipboard?.writeText(url).then(() => G.toast('링크를 복사했어요! 친구에게 보내 주세요'), () => G.toast(url, 6000));
+    };
+    $('menu-coop-code').replaceChildren(label, ...net.code.map((e) => Object.assign(document.createElement('span'), { textContent: e })), copy);
     $('menu-coop-players').replaceChildren(...net.players().map((p) => {
       const tag = document.createElement('span');
       tag.textContent = `${p.id === net.owner ? '👑 ' : ''}${p.name}${p.me ? ' (나)' : ''}`;
       tag.style.setProperty('--hoodie', p.color);
       return tag;
     }));
-    $('btn-close-game').classList.toggle('hidden', !net.isOwner);
   }
-  $('btn-copy-link').onclick = () => {
-    const url = `${location.origin}${location.pathname}?game=${G.net.id}`;
-    navigator.clipboard?.writeText(url).then(() => G.toast('링크를 복사했어요! 친구에게 보내 주세요'), () => G.toast(url, 6000));
-  };
   $('btn-leave').onclick = () => screens.onLeave?.();
-  let closeArmed = -Infinity;
-  $('btn-close-game').onclick = () => {
-    if (performance.now() - closeArmed < 3000) { screens.onCloseGame?.(); return; }
-    closeArmed = performance.now();
-    $('btn-close-game').textContent = '정말요? 모두 게임에서 나가요!';
-    setTimeout(() => { $('btn-close-game').textContent = '게임 닫기'; }, 3000);
-  };
 
   $('btn-resume').onclick = () => { screens.closeMenu(); screens.onResume?.(); };
   $('btn-shop-close').onclick = () => { screens.closeShop(); screens.onResume?.(); };
