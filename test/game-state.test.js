@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { newState, stars, buyUpgrade, addDiamonds, damage, heal, load, save, maxPotions, hasAbility, addTreat } from '../src/core/state.js';
 import { currentObjective, STAGES } from '../src/core/quests.js';
+import { STEP_ADVICE, MONSTERS, adviceFor, metMonsters } from '../src/core/polly.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 
@@ -91,5 +92,23 @@ describe('state', () => {
     expect(l.flags.awake).toBe(true);
     expect(l.items.hammer).toBe(true);
     expect(l.items.scissors).toBe(false);
+  });
+});
+
+describe('Polly knows every mission (Deckard Cain at the camp)', () => {
+  it('has advice for every step of every stage', () => {
+    const missing = STAGES.flatMap((st) => st.steps.map((s) => s.text)).filter((t) => !t.startsWith('돌 괴물이 깨어났다') && !STEP_ADVICE[t]);
+    expect(missing).toEqual([]);
+  });
+  it('explains the mission at hand', () => {
+    const s = newState();
+    Object.assign(s.flags, { awake: true, explored: true });
+    expect(adviceFor(s).join(' ')).toContain('망치 찾기');
+  });
+  it('tells about monsters once they are met', () => {
+    const s = newState();
+    expect(metMonsters(s)).toEqual([]);
+    s.flags.rockyWoke = true;
+    expect(metMonsters(s).map((m) => m.name)).toEqual([MONSTERS[0].name]);
   });
 });

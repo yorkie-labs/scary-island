@@ -132,6 +132,12 @@ kbd { display: inline-block; min-width: 22px; padding: 0 6px; border-radius: 6px
 .shop-item h3 { margin: 0; font-size: 22px; }
 .shop-item p { margin: 0; opacity: 0.85; }
 .shop-item.owned { opacity: 0.55; }
+/* Polly's talk: her words in a bubble, the questions as buttons */
+#polly-say { width: min(620px, 92vw); background: var(--ink); color: var(--panel-solid); border-radius: 20px; padding: 14px 20px; text-align: left; font-size: 18px; line-height: 1.55; box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25); }
+#polly-say p { margin: 4px 0; }
+#polly-say b { color: #c2410c; }
+#polly-say kbd { background: var(--panel-solid); color: var(--ink); }
+#polly-choices { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
 /* item pictures drawn from the game's models (ui/icons.js) */
 .ico { width: 1.35em; height: 1.35em; vertical-align: middle; object-fit: contain; pointer-events: none; }
 #bar .slot .ico { width: 82%; height: 82%; }

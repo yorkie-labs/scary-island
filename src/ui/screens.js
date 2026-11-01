@@ -2,6 +2,7 @@ import { STAGES } from '../core/quests.js';
 import { UPGRADES, buyUpgrade, stars } from '../core/state.js';
 import { sfx, setMuted, isMuted } from '../audio/sound.js';
 import { icon } from './icons.js';
+import { adviceFor, metMonsters } from '../core/polly.js';
 
 // what each shop thing looks like (the stronger lamp is the flashlight)
 const SHOP_ICONS = { bag: 'bag', shoes: 'shoes', lamp: 'flashlight', bone: 'bone' };
@@ -44,11 +45,13 @@ export function createScreens(G, { onRestart }) {
       G.settle();
     },
 
-    openShop() {
+    // Polly's stall: a talk first (what to do, monsters, controls), and the
+    // shop is one of the choices; 'shop' opens straight on the wares
+    openShop(view = 'talk') {
       screens.shopOpen = true;
       G.mode = 'menu';
       G.input.enabled = false;
-      renderShop();
+      if (view === 'shop') showWares(); else pollyTalk(['어서 와, 꼬마 강아지! 뭐가 궁금해? 깍!']);
       $('shop').classList.remove('hidden');
     },
     closeShop() {
@@ -57,6 +60,47 @@ export function createScreens(G, { onRestart }) {
       G.settle();
     },
   };
+
+  // Polly talks: her lines in a bubble, the questions as buttons
+  const say = (lines) => {
+    $('polly-say').innerHTML = lines.map((l) => `<p>${l}</p>`).join('');
+  };
+  function pollyTalk(lines) {
+    $('shop-title').textContent = '🦜 폴리';
+    $('shop-items').classList.add('hidden');
+    $('polly-say').classList.remove('hidden');
+    say(lines);
+    const ask = {
+      '지금 뭘 해야 해?': () => {
+        const heard = G.helpLog?.at(-1);
+        say([...adviceFor(G.state), ...(heard ? [`아까 이런 것도 궁금했지? ${heard}`] : [])]);
+      },
+      '괴물 이야기': () => {
+        const met = metMonsters(G.state);
+        say(met.length ? met.map((m) => `<b>${m.name}</b> ${m.tip}`) : ['아직 괴물을 못 만났구나. 다행이야! 만나면 내가 약점을 알려 줄게.']);
+      },
+      '조작법': () => say([G.touch ? TOUCH_CONTROLS_HTML : CONTROLS_HTML]),
+      '물건 사기': () => showWares(),
+    };
+    $('polly-choices').classList.remove('hidden');
+    $('polly-choices').replaceChildren(...Object.entries(ask).map(([q, fn]) => {
+      const b = document.createElement('button');
+      b.textContent = q;
+      b.onclick = () => { sfx.click(); fn(); };
+      return b;
+    }));
+  }
+  function showWares() {
+    $('shop-title').textContent = '🦜 폴리의 가게';
+    $('polly-say').classList.add('hidden');
+    $('polly-choices').classList.remove('hidden');
+    const back = document.createElement('button');
+    back.textContent = '← 폴리랑 이야기하기';
+    back.onclick = () => { sfx.click(); pollyTalk(['또 뭐가 궁금해?']); };
+    $('polly-choices').replaceChildren(back);
+    $('shop-items').classList.remove('hidden');
+    renderShop();
+  }
 
   function renderShop() {
     $('shop-items').innerHTML = Object.entries(UPGRADES).map(([k, u]) => {

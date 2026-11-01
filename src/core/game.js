@@ -155,6 +155,15 @@ export function createGame({ scene, camera, renderer, look, physics, state, inpu
     // the game in the dialogue box until read. Either way it all queues up in
     // order, and a big moment cuts any chatter before it short.
     say(lines, { stop = false } = {}) {
+      // once Yorkie has met Polly at the camp, help lines are hers to explain:
+      // kept for "지금 뭘 해야 해?", with a nudge instead of a card
+      if (!stop && state.flags.campReached && lines.some((l) => l?.name === '도움말')) {
+        for (const l of lines) if (l?.name === '도움말') (G.helpLog ??= []).push(l.text);
+        G.helpLog.splice(0, G.helpLog.length - 5);
+        lines = lines.filter((l) => l?.name !== '도움말');
+        if (G.time - (G.lastPollyNudge ?? -1e9) > 90) { G.lastPollyNudge = G.time; G.toast('🦜 궁금하면 캠프의 폴리에게 물어봐요!', 3200); }
+        if (!lines.length) return sayQueue;
+      }
       if (stop) { stops++; hud.hush(true); }
       const run = stop
         ? () => new Promise((resolve) => {

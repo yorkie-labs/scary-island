@@ -80,7 +80,9 @@ export function buildCamp(G, { openShop, clearStage }) {
   G.addLight({ pos: sign.position.clone().addScaledVector(front, 1), color: '#ffd59a', intensity: 3, distance: 6 });
   const shopPos = groundPos(st.x + front.x * 2.2, st.z + front.z * 2.2);
   G.mark('shop', shopPos);
-  G.addInteractable({ pos: shopPos, radius: 2.4, label: '폴리의 가게 (업그레이드)', action: openShop });
+  // Polly is the camp's Deckard Cain: what to do next, monster weak spots,
+  // controls, and the shop (ui/screens.js)
+  G.addInteractable({ pos: shopPos, radius: 2.4, label: '🦜 폴리와 이야기하기 (도움말 · 가게)', action: () => openShop() });
 
   createSnack(G, c.x - 2.5, c.z + 8);
 
@@ -95,6 +97,7 @@ export function buildCamp(G, { openShop, clearStage }) {
         { name: '요키', text: '휴, 여기는 안전해 보여. 모닥불도 있고… 앵무새도 있네?' },
         { name: '폴리', text: '안녕, 꼬마 강아지! 이 섬에서 나가고 싶으면 배를 고쳐야 해. 부품은 섬 곳곳에 흩어져 있지.' },
         { name: '폴리', text: '서쪽 숲부터 가 봐. 다이아몬드를 모아 오면 내가 좋은 물건도 줄게! 깍!' },
+        { name: '폴리', text: '모르는 게 생기면 언제든 나한테 와서 물어봐. 다 알려 줄게!' },
       ]);
     },
   });
