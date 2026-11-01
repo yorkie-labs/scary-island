@@ -132,6 +132,8 @@ export function createIsoCamera(G) {
       return new Promise((r) => setTimeout(r, duration * 1000));
     },
     release() { override = null; },
+    // pinch (touch screens): closer for < 1, farther for > 1
+    zoom(factor) { rig.distance = THREE.MathUtils.clamp(rig.distance * factor, DIST_MIN, DIST_MAX); },
     snap(target) { focus.set(target.x, target.y + 0.6, target.z); },
     clearFades() { for (const o of faded) setFaded(o, false); faded.clear(); },
   };

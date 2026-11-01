@@ -155,6 +155,9 @@ async function boot() {
   setupFlashlight(G);
   bindKeys(G, screens);
   hud.onKey = (code) => input.trigger(code);
+  // where Yorkie is on screen (talk keeps clear of it)
+  const heroAt = new THREE.Vector3();
+  hud.heroY = () => { heroAt.copy(G.player.position).setY(G.player.position.y + 0.5).project(camera); return ((1 - heroAt.y) / 2) * innerHeight; };
   setupTouch(G);
 
   // title screen: the illustration gives way to the real island, seen from a

@@ -36,9 +36,30 @@ export function setupTouch(G) {
     v.right = dx / R; v.forward = -dy / R; v.run = d > R * 0.9;
   };
   const touchOf = (e) => [...e.changedTouches].find((t) => t.identifier === id);
+
+  // Two fingers on the island pinch the camera closer or farther (the
+  // mouse wheel of a phone). A pinch is never a tap or a stick.
+  let pinch = null; // { d } while two fingers are down; 'done' until they all lift
+  const spread = (e) => { const [a, b] = e.targetTouches; return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); };
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.targetTouches.length === 2 && !active && G.mode !== 'title') { pinch = { d: spread(e) }; id = null; }
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (!pinch?.d || e.targetTouches.length < 2) return;
+    e.preventDefault();
+    const d = spread(e);
+    if (d > 0) G.cam.zoom(pinch.d / d);
+    pinch.d = d;
+  }, { passive: false });
+  canvas.addEventListener('touchend', (e) => {
+    if (!pinch) return;
+    e.preventDefault(); // no walk order from a pinching finger
+    pinch = e.targetTouches.length ? 'done' : null;
+  }, { passive: false });
+
   canvas.addEventListener('touchstart', (e) => {
     const t = e.changedTouches[0];
-    if (id !== null || G.mode !== 'play' || t.clientX > innerWidth / 2) return;
+    if (pinch || id !== null || G.mode !== 'play' || t.clientX > innerWidth / 2) return;
     id = t.identifier; active = false;
     origin.x = t.clientX; origin.y = t.clientY; // where the stick will sit
   }, { passive: true });
@@ -61,7 +82,10 @@ export function setupTouch(G) {
   };
   canvas.addEventListener('touchend', end, { passive: false });
   canvas.addEventListener('touchcancel', end, { passive: false });
-  for (const b of document.querySelectorAll('#touch-buttons button')) {
+  // a phone screen is small: start closer than on a desktop, so Yorkie is
+  // about as big to the eye (a tablet already is). A pinch changes it.
+  if (Math.min(innerWidth, innerHeight) < 500) G.cam.zoom(0.7);
+  for (const b of document.querySelectorAll('#touch button[data-key]')) {
     b.addEventListener('touchstart', (e) => { e.preventDefault(); G.input.trigger(b.dataset.key, e); });
   }
 }

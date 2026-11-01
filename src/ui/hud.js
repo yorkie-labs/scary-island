@@ -258,16 +258,27 @@ export function createHud() {
           if (l.name === '도움말') { hud.tip(l.text); next(); return; }
           const ms = 2200 + 80 * l.text.length; // time for a child to read it
           speechNow = { next, timer: setTimeout(next, ms) };
-          // just above the bar, wherever this screen's layout puts it
-          const barTop = $('bar').getBoundingClientRect().top;
-          $('speech').style.bottom = barTop > 0 ? `${innerHeight - barTop + 10}px` : '';
+          // just above the bar (and the ✋ prompt), wherever this layout puts them
+          const barTop = Math.min(...['bar', 'prompt'].map((id) => $(id)).filter((el) => !el.classList.contains('hidden'))
+            .map((el) => el.getBoundingClientRect().top).filter((t) => t > 0));
+          const el = $('speech');
+          el.style.top = '';
+          el.style.bottom = Number.isFinite(barTop) ? `${innerHeight - barTop + 10}px` : '';
           $('speech-name').textContent = l.name ?? '';
           $('speech-text').textContent = l.text;
+          el.classList.remove('hidden'); // (shown before measuring it)
+          // never over Yorkie (a tall layout or the ✋ prompt can push it up to
+          // the middle): then it goes up top, under the mission
+          const r = el.getBoundingClientRect(), y = hud.heroY?.();
+          if (y != null && y > r.top - 30 && y < r.bottom + 50) {
+            el.style.bottom = 'auto';
+            el.style.top = `${$('objective').getBoundingClientRect().bottom + 10}px`;
+          }
           const bar = $('speech-time');
           bar.style.transition = 'none'; bar.style.transform = 'scaleX(1)';
           void bar.offsetWidth;
           bar.style.transition = `transform ${ms}ms linear`; bar.style.transform = 'scaleX(0)';
-          $('speech').classList.remove('hidden', 'pop'); void $('speech').offsetWidth; $('speech').classList.add('pop');
+          el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
         };
         next();
       });

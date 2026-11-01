@@ -139,8 +139,20 @@ kbd { display: inline-block; min-width: 22px; padding: 0 6px; border-radius: 6px
 #stick { position: absolute; left: 28px; bottom: 28px; width: 130px; height: 130px; border-radius: 50%; background: rgba(255, 255, 255, 0.15); pointer-events: none; opacity: 0.45; transition: opacity 0.2s; }
 #stick.held { opacity: 1; transition: none; }
 #knob { position: absolute; left: 40px; top: 40px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255, 255, 255, 0.6); }
-#touch-buttons { position: absolute; right: 14px; bottom: 18px; display: grid; grid-template-columns: repeat(4, 54px); gap: 8px; pointer-events: auto; }
-#touch-buttons button { width: 54px; height: 54px; padding: 0; font-size: 22px; background: rgba(255, 255, 255, 0.75); }
+/* the right thumb (as in mobile action games): a big hammer in the corner and
+   four skills on an arc around it, each placed by its centre (right/bottom) */
+#touch-buttons { position: absolute; right: 0; bottom: 0; pointer-events: auto; }
+#touch-buttons button { position: absolute; width: 54px; height: 54px; padding: 0; font-size: 22px; background: rgba(255, 255, 255, 0.75); transform: translate(50%, 50%); }
+#touch-buttons [data-key="Hammer"] { width: 80px; height: 80px; font-size: 34px; right: 62px; bottom: 62px; }
+#touch-buttons [data-key="Digit2"] { right: 182px; bottom: 62px; }  /* the arc: 120 px out, at 0°, 30°, 60°, 90° (8 px between) */
+#touch-buttons [data-key="Digit3"] { right: 166px; bottom: 122px; }
+#touch-buttons [data-key="Light"] { right: 122px; bottom: 166px; }
+#touch-buttons [data-key="Digit1"] { right: 62px; bottom: 182px; }
+#touch-buttons button:active { transform: translate(50%, calc(50% + 2px)); }
+/* map and menu: small, under the minimap */
+#touch-top { position: absolute; display: flex; gap: 6px; pointer-events: auto; }
+#touch-top button { width: 44px; height: 44px; padding: 0; font-size: 19px; background: rgba(255, 255, 255, 0.75); }
+body.touch #belt small { display: none; } /* no key numbers on a touch screen */
 
 @media (max-width: 640px) {
   #minimap { width: 110px; height: 110px; }
@@ -258,10 +270,9 @@ body.touch #menu-controls kbd { font: inherit; font-size: 13px; line-height: 20p
   body.touch #toast { top: 128px; font-size: 16px; }
   body.touch #stick { left: 18px; bottom: 24px; width: 120px; height: 120px; }
   body.touch #knob { left: 35px; top: 35px; }
-  body.touch #touch-buttons { right: 12px; bottom: 16px; grid-template-columns: repeat(3, 52px); gap: 8px; }
-  body.touch #touch-buttons button { width: 52px; height: 52px; font-size: 21px; }
-  body.touch #bar { bottom: 196px; }
-  body.touch #prompt { bottom: 296px; }
+  body.touch #touch-top { right: 10px; top: 136px; }
+  body.touch #bar { bottom: 220px; } /* above the thumb arc */
+  body.touch #prompt { bottom: 332px; }
   body.touch #dialog { bottom: 196px; font-size: 18px; padding: 14px 18px 24px; }
 }
 /* lying down: the bar sits low between the stick and the buttons */
@@ -274,8 +285,7 @@ body.touch #menu-controls kbd { font: inherit; font-size: 13px; line-height: 20p
   body.touch #toast { top: 64px; font-size: 16px; }
   body.touch #stick { left: 16px; bottom: 16px; width: 110px; height: 110px; }
   body.touch #knob { left: 30px; top: 30px; }
-  body.touch #touch-buttons { right: 12px; bottom: 12px; grid-template-columns: repeat(3, 46px); gap: 6px; }
-  body.touch #touch-buttons button { width: 46px; height: 46px; font-size: 19px; }
+  body.touch #touch-top { right: 8px; top: 124px; }
   body.touch #bar { bottom: 6px; }
   body.touch #prompt { bottom: 112px; }
   body.touch #dialog { bottom: 8px; width: min(600px, 62vw); font-size: 17px; line-height: 1.4; padding: 12px 18px 22px; }
