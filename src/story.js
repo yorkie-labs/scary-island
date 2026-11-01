@@ -28,6 +28,7 @@ export async function playIntro(G) {
   G.cam.fly(v(p.x + 3, heightAt(p.x, p.z) + 2.2, p.z + 3.5), v(p.x, p.y + 0.6, p.z), 0.01);
   await new Promise((r) => setTimeout(r, 100));
   await G.hud.fade(false);
+  G.hud.show(true); // Yorkie wakes up: from here the controls are the child's
   G.player.act('cheer');
   await G.say([
     { name: 'Yorkie', text: '으으… 여긴 어디지? 내 배는…?' },
@@ -42,6 +43,7 @@ export async function playIntro(G) {
 // on the beach blinks. THE END? Then the credits, as the GDD §14 team table.
 export async function playEnding(G, { ship, dir }) {
   G.beginCutscene();
+  G.hud.show(false); // a moment to watch: no controls on screen
   G.musicOverride = 'calm';
   const pm = G.player.model;
   G.player.state.frozen = true;

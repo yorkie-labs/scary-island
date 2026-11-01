@@ -169,7 +169,7 @@ async function boot() {
     initAudio(); resumeAudio();
     if (fresh && saved) { startOver(); return; }
     $('title').classList.add('hidden');
-    hud.show(true);
+    hud.show(G.flag('awake')); // the intro brings the controls on when Yorkie wakes
     G.refresh();
     G.mode = 'play';
     if (!G.flag('awake')) await playIntro(G);
