@@ -14,6 +14,7 @@ const INVULNERABLE_AFTER_HIT = 1.6;
 // a roll makes Yorkie unhittable for a moment, so it comes back slowly:
 // at most one roll every ROLL_COOLDOWN seconds (shown on the 🌀 button)
 export const ROLL_COOLDOWN = 1.5;
+export const JUMP_COOLDOWN = 1.0; // and no bunny-hopping (shown on the ⤴ button)
 
 export const ACTIONS = {
   swing: { duration: 0.45, cooldown: 0.1 },
@@ -52,7 +53,7 @@ export function createPlayer(G, spawn) {
     vy: 0, grounded: true, speed: 0, heading: spawn.heading ?? Math.PI,
     action: null, cooldown: 0, jumpQueued: false,
     knock: new THREE.Vector2(), invulnerable: 0, hidden: false, frozen: false,
-    stepTimer: 0, wasGrounded: true, rollReady: 0,
+    stepTimer: 0, wasGrounded: true, rollReady: 0, jumpReady: 0,
   };
   const safe = new THREE.Vector3(spawn.x, spawn.y, spawn.z);
   let safeTimer = 0;
@@ -188,11 +189,16 @@ export function createPlayer(G, spawn) {
   return {
     model, body, collider, state: s, height: HEIGHT,
     fixedUpdate, update, act, hurt, teleport,
-    jump() { if (s.grounded && !s.frozen && s.action?.name !== 'roll' && G.canUse('jump')) s.jumpQueued = true; },
+    jump() {
+      if (!s.grounded || s.frozen || s.action?.name === 'roll' || G.time < s.jumpReady || !G.canUse('jump')) return;
+      s.jumpQueued = true;
+      s.jumpReady = G.time + JUMP_COOLDOWN;
+    },
     get position() { return model.position; },
     get facing() { return forward.set(Math.sin(s.heading), 0, Math.cos(s.heading)); },
     get safe() { return safe; },
-    // 0 when a roll is ready, up to 1 right after one
+    // 0 when ready, up to 1 right after one
     get rollCooldown() { return Math.max(0, (s.rollReady - G.time) / ROLL_COOLDOWN); },
+    get jumpCooldown() { return Math.max(0, (s.jumpReady - G.time) / JUMP_COOLDOWN); },
   };
 }

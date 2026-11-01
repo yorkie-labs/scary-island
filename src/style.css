@@ -155,8 +155,9 @@ kbd { display: inline-block; min-width: 22px; padding: 0 6px; border-radius: 6px
   content: attr(data-badge); position: absolute; right: -4px; bottom: -4px; font-size: 12px; line-height: 1; padding: 3px 5px;
   border-radius: 999px; background: var(--panel-solid); color: #fff; filter: none;
 }
-/* the roll cooldown: a dark sweep that runs out (--cd from 1 to 0, set by hud.tick) */
-#touch-buttons [data-key="Digit2"]::before, #slots [data-key="Digit2"]::before {
+/* roll and jump cooldowns: a dark sweep that runs out (--cd from 1 to 0, set by hud.tick) */
+#touch-buttons [data-key="Digit2"]::before, #slots [data-key="Digit2"]::before,
+#touch-buttons [data-key="Digit3"]::before, #slots [data-key="Digit3"]::before {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
   background: conic-gradient(rgba(20, 12, 34, 0.6) calc(var(--cd, 0) * 360deg), transparent 0);
 }
@@ -299,10 +300,20 @@ body.touch #menu-controls kbd { font: inherit; font-size: 13px; line-height: 20p
   body.touch #toast { top: 64px; font-size: 16px; }
   body.touch #stick { left: 16px; bottom: 16px; width: 110px; height: 110px; }
   body.touch #knob { left: 30px; top: 30px; }
-  body.touch #touch-top { right: 8px; top: 124px; }
+  body.touch #touch-top { left: 8px; top: 8px; } /* the free top-left corner: clear of the thumb arc on any height */
+  body.touch #tip { top: 60px; }
   body.touch #bar { bottom: 6px; }
   body.touch #prompt { bottom: 112px; }
   body.touch #dialog { bottom: 8px; width: min(600px, 62vw); font-size: 17px; line-height: 1.4; padding: 12px 18px 22px; }
+}
+/* a very short phone lying down (Safari's bars take the height): the thumb
+   arc reaches up to the minimap, so the minimap shrinks and loses its label */
+@media (orientation: landscape) and (max-height: 330px) {
+  body.touch #minimap { width: 68px; height: 68px; }
+  body.touch #region-name { display: none; }
+}
+@media (orientation: landscape) and (max-height: 300px) {
+  body.touch #touch-buttons { transform: scale(0.85); transform-origin: right bottom; } /* the arc, a little smaller, toward the corner */
 }
 /* short screens (phones lying down): menus and the shop get compact */
 @media (max-height: 500px) {

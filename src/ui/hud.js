@@ -127,9 +127,11 @@ export function createHud() {
       root.setProperty('--bar-bottom', `${Math.round($('bar').getBoundingClientRect().bottom)}px`);
     },
 
-    // every frame bits: the flashlight battery orb, the roll cooldown
-    tick({ battery = 0, hasLight = false, rollCooldown = 0 }) {
-      for (const el of document.querySelectorAll('#touch-buttons [data-key="Digit2"], #slots [data-key="Digit2"]')) el.style.setProperty('--cd', rollCooldown.toFixed(3));
+    // every frame bits: the flashlight battery orb, the roll and jump cooldowns
+    tick({ battery = 0, hasLight = false, cooldowns = {} }) {
+      for (const [key, cd] of Object.entries(cooldowns)) {
+        for (const el of document.querySelectorAll(`#touch-buttons [data-key="${key}"], #slots [data-key="${key}"]`)) el.style.setProperty('--cd', cd.toFixed(3));
+      }
       const orb = $('battery-orb');
       orb.classList.toggle('empty', !hasLight);
       orb.querySelector('.fill').style.height = `${hasLight ? battery : 0}%`;
