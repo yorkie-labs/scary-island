@@ -25,6 +25,7 @@ export function createHud() {
   let toastTimer = 0;
   let dialogQueue = null;
   let speechNow = null, hushed = false, tipTimer = 0;
+  addEventListener('resize', () => setTimeout(() => hud.relayout(), 50));
   $('speech').addEventListener('pointerdown', (e) => { e.stopPropagation(); hud.skipSpeech(); });
   $('tip-close').addEventListener('pointerdown', (e) => { e.stopPropagation(); clearTimeout(tipTimer); $('tip').classList.add('hidden'); });
 
@@ -106,6 +107,15 @@ export function createHud() {
         if (lastObjective) sfx.click();
         lastObjective = text;
       }
+      hud.relayout();
+    },
+
+    // Where the mission panel and the bar end, as CSS variables: an upright
+    // phone stacks the bar, toasts and tips under them (style.css).
+    relayout() {
+      const root = document.documentElement.style;
+      root.setProperty('--objective-bottom', `${Math.round($('objective').getBoundingClientRect().bottom)}px`);
+      root.setProperty('--bar-bottom', `${Math.round($('bar').getBoundingClientRect().bottom)}px`);
     },
 
     // every frame bits: the flashlight battery orb
@@ -258,22 +268,11 @@ export function createHud() {
           if (l.name === '도움말') { hud.tip(l.text); next(); return; }
           const ms = 2200 + 80 * l.text.length; // time for a child to read it
           speechNow = { next, timer: setTimeout(next, ms) };
-          // just above the bar (and the ✋ prompt), wherever this layout puts them
-          const barTop = Math.min(...['bar', 'prompt'].map((id) => $(id)).filter((el) => !el.classList.contains('hidden'))
-            .map((el) => el.getBoundingClientRect().top).filter((t) => t > 0));
           const el = $('speech');
-          el.style.top = '';
-          el.style.bottom = Number.isFinite(barTop) ? `${innerHeight - barTop + 10}px` : '';
           $('speech-name').textContent = l.name ?? '';
           $('speech-text').textContent = l.text;
           el.classList.remove('hidden'); // (shown before measuring it)
-          // never over Yorkie (a tall layout or the ✋ prompt can push it up to
-          // the middle): then it goes up top, under the mission
-          const r = el.getBoundingClientRect(), y = hud.heroY?.();
-          if (y != null && y > r.top - 30 && y < r.bottom + 50) {
-            el.style.bottom = 'auto';
-            el.style.top = `${$('objective').getBoundingClientRect().bottom + 10}px`;
-          }
+          placeSpeech(el);
           const bar = $('speech-time');
           bar.style.transition = 'none'; bar.style.transform = 'scaleX(1)';
           void bar.offsetWidth;
@@ -326,6 +325,25 @@ export function createHud() {
       return new Promise((r) => setTimeout(() => { el.classList.add('hidden'); r(); }, ms));
     },
   };
+
+  // Talk sits low, just above whatever is in its way in the lower half of the
+  // screen (the bar, the ✋ prompt, the thumb buttons: whichever this layout
+  // puts under it), and never over Yorkie: then it goes up, under the mission.
+  function placeSpeech(el) {
+    el.style.top = ''; el.style.bottom = '';
+    const w = el.getBoundingClientRect();
+    const blockers = [...document.querySelectorAll('#bar, #prompt, #touch-buttons button')]
+      .filter((b) => !b.closest('.hidden') && getComputedStyle(b).display !== 'none')
+      .map((b) => b.getBoundingClientRect())
+      .filter((r) => r.height && r.top > innerHeight / 2 && r.left < w.right && r.right > w.left);
+    if (blockers.length) el.style.bottom = `${innerHeight - Math.min(...blockers.map((r) => r.top)) + 10}px`;
+    const r = el.getBoundingClientRect(), y = hud.heroY?.();
+    if (y != null && y > r.top - 30 && y < r.bottom + 50) {
+      el.style.bottom = 'auto';
+      el.style.top = `${Math.max($('objective').getBoundingClientRect().bottom, upright() ? $('bar').getBoundingClientRect().bottom : 0) + 10}px`;
+    }
+  }
+  const upright = () => document.body.classList.contains('touch') && innerHeight > innerWidth;
 
   function showLine() {
     const l = dialogQueue.lines[dialogQueue.i];

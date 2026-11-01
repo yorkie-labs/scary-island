@@ -266,14 +266,17 @@ body.touch #menu-controls kbd { font: inherit; font-size: 13px; line-height: 20p
   body.touch #minimap { width: 92px; height: 92px; border-width: 3px; }
   body.touch #minimap-wrap { right: 10px; top: 10px; }
   body.touch #region-name { font-size: 12px; }
-  body.touch #hover-plate { top: 118px; }
-  body.touch #toast { top: 128px; font-size: 16px; }
+  /* the status bar (hearts, potions, battery, finds) sits top-left under the
+     mission, out of the middle of the island; toasts and tips go under it */
+  body.touch #bar { left: 10px; right: auto; top: calc(var(--objective-bottom, 62px) + 6px); bottom: auto; transform: none; align-items: flex-start; }
+  body.touch #hover-plate { top: calc(var(--bar-bottom, 150px) + 8px); }
+  body.touch #toast { top: calc(var(--bar-bottom, 150px) + 8px); font-size: 16px; }
+  body.touch #tip { top: calc(var(--bar-bottom, 150px) + 8px); }
   body.touch #stick { left: 18px; bottom: 24px; width: 120px; height: 120px; }
   body.touch #knob { left: 35px; top: 35px; }
   body.touch #touch-top { right: 10px; top: 136px; }
-  body.touch #bar { bottom: 220px; } /* above the thumb arc */
-  body.touch #prompt { bottom: 332px; }
-  body.touch #dialog { bottom: 196px; font-size: 18px; padding: 14px 18px 24px; }
+  body.touch #prompt { bottom: 234px; } /* just above the thumb arc */
+  body.touch #dialog { bottom: 234px; font-size: 18px; padding: 14px 18px 24px; }
 }
 /* lying down: the bar sits low between the stick and the buttons */
 @media (orientation: landscape) {
