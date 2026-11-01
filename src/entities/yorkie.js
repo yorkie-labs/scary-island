@@ -14,10 +14,54 @@ export const YORKIE_COLORS = {
   wood: '#b07a46', woodDark: '#7a5230', band: '#8c8f96',
 };
 
+// Cel shading, as in the character art: light falls in three flat tones
+// instead of a smooth gradient (the black outline is addOutline's).
+let ramp = null;
+function toonRamp() {
+  if (!ramp) {
+    ramp = new THREE.DataTexture(new Uint8Array([110, 190, 255]), 3, 1, THREE.RedFormat);
+    ramp.minFilter = ramp.magFilter = THREE.NearestFilter;
+    ramp.needsUpdate = true;
+  }
+  return ramp;
+}
+
+// Brush strokes of fur, painted once on a canvas and laid over the fur
+// colours, so the coat reads as fur and not as plastic.
+let furStrokes = null;
+function furTexture() {
+  if (furStrokes || typeof document === 'undefined') return furStrokes;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffffff';
+  g.fillRect(0, 0, 128, 128);
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 90; i++) {
+    const x = rnd() * 128, y = rnd() * 128, len = 8 + rnd() * 14, bend = (rnd() - 0.5) * 6;
+    g.strokeStyle = rnd() < 0.7 ? 'rgba(90, 50, 20, 0.22)' : 'rgba(255, 240, 210, 0.35)';
+    g.lineWidth = 1 + rnd() * 1.5;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.quadraticCurveTo(x + bend, y + len / 2, x + bend * 0.5, y + len);
+    g.stroke();
+  }
+  furStrokes = new THREE.CanvasTexture(c);
+  furStrokes.wrapS = furStrokes.wrapT = THREE.RepeatWrapping;
+  furStrokes.repeat.set(2, 2);
+  furStrokes.colorSpace = THREE.SRGBColorSpace;
+  return furStrokes;
+}
+const FUR = new Set();
+
 const mats = new Map();
 function mat(hex, extra = {}) {
   const key = hex + JSON.stringify(extra);
-  if (!mats.has(key)) mats.set(key, new THREE.MeshStandardMaterial({ color: hex, flatShading: true, roughness: 0.85, ...extra }));
+  if (!mats.has(key)) {
+    const { roughness, metalness, ...toon } = extra; // (a toon material has neither)
+    mats.set(key, new THREE.MeshToonMaterial({ color: hex, gradientMap: toonRamp(), map: FUR.has(hex) ? furTexture() : null, ...toon }));
+  }
   return mats.get(key);
 }
 
@@ -30,6 +74,8 @@ function mesh(geo, color, { x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1,
   m.receiveShadow = true;
   return m;
 }
+
+for (const k of ['fur', 'furDark', 'silk']) FUR.add(YORKIE_COLORS[k]);
 
 const pivot = (name, x = 0, y = 0, z = 0) => {
   const g = new THREE.Group();
@@ -116,7 +162,8 @@ export function createYorkie() {
   const neck = pivot('neck', 0, 0.32, 0);
   torso.add(neck);
   torso.add(mesh(new THREE.SphereGeometry(0.15, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), C.hoodieDark, { y: 0.27, z: -0.08, rx: -0.6, sx: 1.1 }));
-  const head = pivot('head', 0, 0.2, 0);
+  const head = pivot('head', 0, 0.22, 0);
+  head.scale.setScalar(1.12); // the art's big head
   neck.add(head);
   // The head, after the character art: a big mass of fur around a smooth tan
   // face. The fur is built from chunky faceted clumps (low-poly fur), not
@@ -127,8 +174,9 @@ export function createYorkie() {
   const clump = (x, y, z, r, color, { sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0 } = {}) =>
     head.add(mesh(new THREE.IcosahedronGeometry(r, 0), color, { x, y, z, sx, sy, sz, rx, ry, rz }));
   // the fur mass: the back of the head, darker
-  clump(0, 0.04, -0.06, 0.22, C.furDark, { sx: 1.15, sy: 1.0, sz: 0.9, rz: 0.3 });
-  clump(0, 0.12, -0.02, 0.21, C.fur, { sx: 1.05, sy: 0.9, sz: 0.9, rx: 0.4 });
+  // (the game looks from above and behind: golden on top, dark only lower down)
+  clump(0, -0.02, -0.08, 0.21, C.furDark, { sx: 1.15, sy: 0.95, sz: 0.85, rz: 0.3 });
+  clump(0, 0.11, -0.03, 0.235, C.fur, { sx: 1.08, sy: 0.92, sz: 0.95, rx: 0.4 });
   for (const side of [-1, 1]) {
     // the cheeks: darker fur fanning out at the sides and falling past the jaw
     clump(side * 0.21, -0.02, -0.02, 0.15, C.furDark, { sx: 0.8, sz: 1.1, rz: side * 0.6, ry: side * 0.4 });
