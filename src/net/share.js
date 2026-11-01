@@ -121,9 +121,10 @@ function derive(state) {
   return state;
 }
 
-// The state a character plays a game with: the game's world progress plus my
-// own things (hearts, diamonds, upgrades, treats...). Tools are mine to keep
-// and the party's to share. My own world progress waits in my save.
+// The state a character plays a game with: the game's world progress plus the
+// character's own things (hearts, diamonds, upgrades, treats...). The
+// character is a new Yorkie for each game (systems/coop.js coopCharacter), or
+// the one it was before a refresh. Tools found in the game are the party's.
 export function gameStateFor(save, shared, base) {
   const s = structuredClone(save);
   const personalLoot = Object.fromEntries(Object.entries(save.collected ?? {}).filter(([id]) => !isQuestPickup(id)));
@@ -135,21 +136,6 @@ export function gameStateFor(save, shared, base) {
   s.collected = { ...personalLoot, ...on(shared.taken) };
   s.cleared = union(save.cleared, shared.cleared);
   s.checkpoint = null; // spawn where the game is, not where I last was
-  return derive(s);
-}
-
-// What a character keeps after (or during) a game: everything personal as it
-// is now, and world progress from both my own adventure and this game.
-export function creditSave(own, state) {
-  const s = structuredClone(state);
-  const mine = sharedOf(own), game = sharedOf(state);
-  s.flags = { ...union(mine.flags, game.flags), ...Object.fromEntries([...PERSONAL_FLAGS].filter((f) => state.flags[f]).map((f) => [f, true])) };
-  s.items = { ...state.items, ...union(own.items, state.items) };
-  s.parts = { ...state.parts, ...union(own.parts, state.parts) };
-  s.devicesLit = [...new Set([...(own.devicesLit ?? []), ...(state.devicesLit ?? [])])].sort();
-  s.collected = { ...union(state.collected), ...mine.taken };
-  s.cleared = union(own.cleared, state.cleared);
-  s.checkpoint = own.checkpoint; // my own adventure resumes where I left it
   return derive(s);
 }
 

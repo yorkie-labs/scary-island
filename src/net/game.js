@@ -3,8 +3,8 @@ import { publishGame } from './lobby.js';
 import { docKey, idToCode, electHost, mustLeave, HEARTBEAT_MS, safeName, safeColor } from './share.js';
 
 // One game (Diablo II style): a Yorkie document per game, everyone's Yorkie in
-// its presence. The world starts from the creator's (the owner's) progress;
-// the host (the owner while here, else an agreed player) runs the monsters
+// its presence. Every game starts from an empty island. The host (the owner
+// while here, else an agreed player) runs the monsters
 // and keeps the public lobby entry fresh. Nobody closes a game on friends:
 // the last player out removes the document.
 
@@ -16,8 +16,7 @@ export class GameError extends Error {
 
 const SHARED_FIELDS = ['flags', 'items', 'parts', 'devicesLit', 'taken', 'cleared'];
 
-// `shared` (create only): the owner's world progress the game starts from
-export async function joinGame({ id, create = false, secret = false, profile, stage = 1, shared = {} }) {
+export async function joinGame({ id, create = false, secret = false, profile }) {
   const { sdk, client } = await connect();
   const doc = new sdk.Document(docKey(id));
   const me = { id: profile.id, name: profile.name, color: profile.color, joinedAt: Date.now() };
@@ -34,8 +33,8 @@ export async function joinGame({ id, create = false, secret = false, profile, st
     // a fresh random code that someone is already playing on: pick another
     if (doc.getRoot().meta && others().length) await bail('taken');
     doc.update((root) => {
-      root.meta = { owner: me.id, ownerName: me.name, name: `${me.name}의 모험`, secret, stage, createdAt: new Date(), version: 1 };
-      root.shared = Object.fromEntries(SHARED_FIELDS.map((f) => [f, { ...shared[f] }]));
+      root.meta = { owner: me.id, ownerName: me.name, name: `${me.name}의 모험`, secret, createdAt: new Date(), version: 1 };
+      root.shared = Object.fromEntries(SHARED_FIELDS.map((f) => [f, {}])); // an empty island
     });
   } else if (!doc.getRoot().meta) await bail('missing');
 
@@ -77,11 +76,11 @@ export async function joinGame({ id, create = false, secret = false, profile, st
   ];
 
   // the lobby entry, written one at a time
-  let lobbyChain = Promise.resolve(), lobbyTimer = null;
+  let lobbyChain = Promise.resolve(), lobbyTimer = null, stageNow = () => 1;
   const writeLobby = (entry) => { lobbyChain = lobbyChain.then(() => publishGame(id, entry)).catch((err) => console.warn('lobby entry not written', err)); return lobbyChain; };
   const lobbyEntry = () => {
     const meta = doc.getRoot().meta;
-    return { name: meta.name, owner: meta.owner, ownerName: meta.ownerName, stage: meta.stage, players: players().length, createdAt: meta.createdAt, lastSeen: new Date() };
+    return { name: meta.name, owner: meta.owner, ownerName: meta.ownerName, stage: stageNow(), players: players().length, createdAt: meta.createdAt, lastSeen: new Date() };
   };
   const refreshLobby = () => { if (!ended && net.amHost() && !net.secret) writeLobby(lobbyEntry()); };
   function lobbySoon() { clearTimeout(lobbyTimer); lobbyTimer = setTimeout(refreshLobby, 1000); }
@@ -109,6 +108,7 @@ export async function joinGame({ id, create = false, secret = false, profile, st
     players() { return players().map((p) => ({ ...p, name: safeName(p.name), color: safeColor(p.color) })); },
     others() { return net.players().filter((p) => !p.me); },
     on(name, fn) { listeners[name].push(fn); },
+    reportStage(fn) { stageNow = fn; }, // what the lobby shows: the stage the game is on
     // a message to everyone else in the game (not kept)
     // (never throws: it is called from the game loop, and a lost message is fine)
     broadcast(topic, payload) {

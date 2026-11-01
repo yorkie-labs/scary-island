@@ -1,10 +1,26 @@
 import * as THREE from 'three';
 import { createFriends } from '../entities/friends.js';
 import { tintHoodie } from '../entities/yorkie.js';
-import { setSaveTransform } from '../core/state.js';
-import { safeName, sharedOf, newIn, applyShared, creditSave } from '../net/share.js';
+import { setSaveTransform, newState } from '../core/state.js';
+import { currentObjective } from '../core/quests.js';
+import { safeName, sharedOf, newIn, applyShared } from '../net/share.js';
 import { josa } from '../ui/lobby.js';
 import { sfx } from '../audio/sound.js';
+
+const coopKey = (id) => `scary-island-coop-${id}`;
+
+// Was this tab already playing that game? (a refresh: go straight back in)
+export function playedHere(id) {
+  try { return !!sessionStorage.getItem(coopKey(id)); } catch { return false; }
+}
+
+// The character I play a game with: the one I had in this game before a
+// refresh, else a brand-new Yorkie (with my nickname and hoodie).
+export function coopCharacter(id, profile) {
+  let kept = null;
+  try { kept = JSON.parse(sessionStorage.getItem(coopKey(id))); } catch { /* none */ }
+  return kept?.version === 1 ? { ...newState(), ...kept, profile } : { ...newState(), profile };
+}
 
 // What a friend's progress sounds like here (the rest arrives quietly).
 const NEWS = {
@@ -34,7 +50,8 @@ const NEWS = {
 //   friends' Yorkies come in;
 // - world progress is shared both ways: mine goes into the game document, my
 //   friends' comes into my state and my world (regions listen to 'shared');
-// - my save keeps my own adventure plus the credit for this game;
+// - I play the game as a new character: my solo save is left as it is, and
+//   this game's character is kept for the tab (a refresh doesn't lose it);
 // - the monsters run on one client, the host; the others draw them, and send
 //   what they do to a monster (a bonk, a light, a bark) to the host, which
 //   sends back who got hurt.
@@ -42,7 +59,12 @@ export function setupCoop(G, net, own, { onEnd }) {
   G.net = net;
   const friends = G.friends = createFriends(G);
   tintHoodie(G.player.model, G.state.profile.color);
-  setSaveTransform((s) => creditSave(own, s));
+  // saving writes this game's character to the tab and leaves the solo save as it was
+  setSaveTransform((s) => {
+    try { sessionStorage.setItem(coopKey(net.id), JSON.stringify(s)); } catch { /* private mode */ }
+    return { ...own, profile: s.profile };
+  });
+  net.reportStage(() => currentObjective(G.state)?.stage.id ?? 5); // for the lobby
 
   // --- world progress
   let pushed = sharedOf(G.state);

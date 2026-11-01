@@ -25,8 +25,8 @@ import { setupLabels } from './ui/labels.js';
 import { addSilhouette } from './entities/silhouette.js';
 import { createLobbyUI, ensureProfile } from './ui/lobby.js';
 import { joinGame } from './net/game.js';
-import { isGameId, sharedOf, gameStateFor } from './net/share.js';
-import { setupCoop } from './systems/coop.js';
+import { isGameId, gameStateFor } from './net/share.js';
+import { setupCoop, coopCharacter, playedHere } from './systems/coop.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -60,17 +60,19 @@ async function boot() {
   const saved = load();
   const state = saved ?? newState();
 
-  // playing together (Diablo II style): the lobby reloads the page on
-  // ?game=<id>, and the game is joined before the island is built, so the
-  // island is built the way the game has it (net/share.js gameStateFor)
+  // playing together: the lobby reloads the page on ?game=<id>, and the game
+  // is joined before the island is built, so the island is built the way the
+  // game has it (net/share.js gameStateFor). A game always starts from an
+  // empty island, and everyone plays it as a new character.
   const JOIN = 'scary-island-join';
   const urlGame = new URLSearchParams(location.search).get('game');
   const gameHere = isGameId(urlGame) ? urlGame : null;
   let joinIntent = null;
   try { joinIntent = JSON.parse(sessionStorage.getItem(JOIN)); sessionStorage.removeItem(JOIN); } catch { /* none */ }
+  if (!joinIntent && gameHere && playedHere(gameHere)) joinIntent = {}; // a refresh mid-game
   const joining = gameHere && joinIntent ? joinGame({
     id: gameHere, create: !!joinIntent.create, secret: !!joinIntent.secret,
-    profile: ensureProfile(state), stage: currentObjective(state)?.stage.id ?? 5, shared: sharedOf(state),
+    profile: ensureProfile(state),
   }) : null;
   if (joining) $('loading-text').textContent = '친구들과 연결하는 중…';
   joining?.catch(() => {}); // looked at below, once the models are in
@@ -101,8 +103,8 @@ async function boot() {
   if (joining) {
     try {
       net = await joining;
-      own = structuredClone(state); // my own adventure, kept for my save
-      Object.assign(state, gameStateFor(own, net.shared(), newState()));
+      own = structuredClone(state); // my solo adventure: left exactly as it is
+      Object.assign(state, gameStateFor(coopCharacter(gameHere, own.profile), net.shared(), newState()));
     } catch (err) {
       console.error(err);
       joinError = { full: '게임이 꽉 찼어요 (10명). 다른 게임을 골라 봐요!', missing: '그 게임은 끝났거나 없어요. 코드를 확인해 주세요.', taken: '앗, 다시 한 번 눌러 주세요.' }[err.code]

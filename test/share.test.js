@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   MAX_PLAYERS, STALE_MS, CODE_EMOJIS, randomGameId, isGameId, idToCode, codeToId,
   electHost, mustLeave, staleGames, lobbyRows, randomName, isPresetName, safeName, safeColor, HOODIE_COLORS,
-  sharedOf, gameStateFor, creditSave, applyShared, newIn, isQuestPickup,
+  sharedOf, gameStateFor, applyShared, newIn, isQuestPickup,
 } from '../src/net/share.js';
 import { newState } from '../src/core/state.js';
 
@@ -115,7 +115,7 @@ describe('shared progress (Diablo II style)', () => {
     expect(sharedOf(veteran()).taken).toEqual({ hammer: true, engine: true, scissors: true });
   });
 
-  it("a veteran in a newbie's game: the world is the game's, the things are mine", () => {
+  it("a character back after a refresh: the world is the game's, its things are its own", () => {
     const s = gameStateFor(veteran(), newbieGame(), newState());
     expect(s.flags).toEqual({ awake: true }); // the stone door is shut in this game
     expect(s.parts.engine).toBe(false);
@@ -127,27 +127,12 @@ describe('shared progress (Diablo II style)', () => {
     expect(s.checkpoint).toBe(null);
   });
 
-  it('after the game the veteran loses nothing and gains the credit', () => {
-    const own = veteran();
-    const play = gameStateFor(own, newbieGame(), newState());
-    play.flags.rockyWoke = true; // the party got further on something new
-    play.diamonds = 20; // and I found diamonds
-    const saved = creditSave(own, play);
-    expect(saved.flags).toMatchObject({ doorOpen: true, vinesCut: true, rockyWoke: true });
-    expect(saved.collected).toMatchObject({ hammer: true, engine: true, 'treat-b1': true });
-    expect(saved.parts.engine).toBe(true);
-    expect(saved.diamonds).toBe(20);
-    expect(saved.checkpoint).toEqual(own.checkpoint);
-  });
-
-  it("a newbie in a veteran's game gets the credit (rushing is allowed)", () => {
-    const own = newState();
-    const play = gameStateFor(own, sharedOf(veteran()), newState());
+  it("a new Yorkie in a game: nothing of its own, the party's tools and progress", () => {
+    const play = gameStateFor(newState(), sharedOf(veteran()), newState());
     expect(play.flags.doorOpen).toBe(true);
     expect(play.items.hammer).toBe(true); // party tools
-    const saved = creditSave(own, play);
-    expect(saved.flags.doorOpen).toBe(true);
-    expect(saved.cleared[1]).toBe(true);
+    expect(play.diamonds).toBe(0);
+    expect(play.collected['treat-b1']).toBeUndefined();
   });
 
   it("applies a friend's progress once, and reports what changed", () => {

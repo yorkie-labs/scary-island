@@ -18,8 +18,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = [];
 const check = (name, ok, detail = '') => { results.push([ok ? 'PASS' : 'FAIL', name, detail]); console.log(ok ? 'PASS' : 'FAIL', name, detail); };
 
-// A owns the game: through the stone door, hammer in hand. B is new on the
-// beach. C is a veteran from their own game (got past the mine door).
+// Each brings a solo save: A got through the stone door with a hammer, B is
+// new on the beach, C got past the mine door. A game ignores all of that:
+// it starts on an empty island and everyone plays a new Yorkie.
 const SAVES = {
   A: { version: 1, flags: { awake: true, explored: true, rockyWoke: true, rockyEscaped: true, doorOpen: true }, items: { hammer: true }, collected: { hammer: true } },
   B: { version: 1, flags: { awake: true } },
@@ -96,10 +97,11 @@ try {
   // --- shared world progress
   const view = (p) => p.page.evaluate(() => ({ flags: { ...G.state.flags }, items: { ...G.state.items }, diamonds: G.state.diamonds,
     pickups: G.pickups.filter((q) => q.alive && q.id).map((q) => q.id) }));
-  const b0 = await view(B), c0 = await view(C);
-  check("B's island is the owner's (stone door open, party hammer)", b0.flags.doorOpen && b0.items.hammer, JSON.stringify(b0.flags));
-  check("C plays the owner's world, not their own", !c0.flags.mineDoorOpen && !c0.flags.vinesCut && c0.flags.doorOpen, JSON.stringify(c0.flags));
-  check('C keeps their own things', c0.items.scissors && c0.diamonds === 7);
+  const a0 = await view(A), b0 = await view(B), c0 = await view(C);
+  check('a game starts on an empty island (even the owner\'s solo stone door is shut)',
+    [a0, b0, c0].every((v) => !v.flags.doorOpen && !v.flags.mineDoorOpen && !v.flags.vinesCut), JSON.stringify(a0.flags));
+  check('everyone plays a new Yorkie', [a0, b0, c0].every((v) => !v.items.hammer && !v.items.scissors && v.diamonds === 0)
+    && a0.pickups.includes('hammer') && c0.pickups.includes('scissors'));
 
   // B picks up the scissors (a quest pickup): gone for everyone, everyone has them
   await B.page.evaluate(() => { const p = G.pickups.find((q) => q.id === 'scissors'); G.player.teleport({ x: p.model.position.x, y: p.model.position.y - 0.4, z: p.model.position.z }); });
@@ -127,11 +129,14 @@ try {
   const [bTreat, aTreat] = await Promise.all([B.page.evaluate(() => !!G.state.collected['treat-beach-a']), A.page.evaluate(() => G.pickups.some((q) => q.alive && q.id === 'treat-beach-a'))]);
   check('loot is personal: my treat, your treat', bTreat && aTreat, JSON.stringify({ bTreat, aTreat, b: await B.page.evaluate(() => ({ mode: G.mode, at: G.player.position, treat: G.pickups.find((q) => q.id === 'treat-beach-a')?.model.position })) }));
 
-  // credit: C's save holds the game's progress and their own
+  // solo saves are left as they were (only the nickname and hoodie are added);
+  // this game's character is kept in the tab, so a refresh comes back to it
   await wait(500);
   const cSave = await C.page.evaluate(() => { G.refresh(); return JSON.parse(localStorage.getItem('scary-island-save-v1')); });
-  check("C's save: own progress kept, the game's credited", cSave.flags.mineDoorOpen && cSave.flags.vinesCut && cSave.flags.doorOpen && cSave.collected.scissors,
-    JSON.stringify(cSave.flags));
+  const bKept = await B.page.evaluate(() => { G.refresh(); return JSON.parse(sessionStorage.getItem(`scary-island-coop-${G.net.id}`)); });
+  check("C's solo save is untouched by the game", JSON.stringify(Object.keys(cSave.flags).sort()) === JSON.stringify(Object.keys(SAVES.C.flags).sort())
+    && cSave.diamonds === 7 && !!cSave.profile, JSON.stringify(cSave.flags));
+  check("B's game character is kept for the tab", !!bKept?.items?.scissors && !!bKept.collected['treat-beach-a']);
 
   // --- monsters: A hosts; B wakes a beach Rocky, it comes for B (the nearest),
   // B gets bumped through the host, and B's hammer stuns it on the host

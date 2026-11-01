@@ -23,6 +23,14 @@ Lessons: [20261031-scary-island-gdd-lessons.md](20261031-scary-island-gdd-lesson
 
 ## Decisions
 
+> **Changed later (user, 2026-11-01):** a game always starts on an **empty island**
+> and **everyone plays a new Yorkie**. The solo save is left as it is (only the
+> nickname and hoodie are added), so the "credit" rule below is gone (`creditSave`
+> was removed). A game's character is kept in the tab (sessionStorage per game), and
+> a refresh goes straight back in with it. The lobby shows the game's own stage.
+> There is no 게임 닫기: games end when the last player leaves. Talk doesn't stop the
+> game (Diablo III): `G.say` is a small panel, and `{ stop: true }` is kept for big moments.
+
 - **Server**: Yorkie Cloud, public API key in `VITE_YORKIE_API_KEY` in a committed
   `.env` (public by design; Vite reads it in dev and in the Pages build).
 - **Character**: one save slot, as today. Solo play and co-op use the same

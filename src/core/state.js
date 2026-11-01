@@ -91,8 +91,8 @@ export function stars(s, stage) {
   return (s.treats[stage]?.length ?? 0) >= 3 ? 3 : 2;
 }
 
-// While playing in a friend's game the save is the character's credit, not
-// the game's state as it is (net/share.js creditSave): set by systems/coop.js.
+// While playing together the solo save is left as it is, and the game's
+// character is kept elsewhere: set by systems/coop.js.
 let saveTransform = null;
 export function setSaveTransform(fn) { saveTransform = fn; }
 
