@@ -93,3 +93,15 @@
 - Yorkie SDK 0.7.25: `await client.attach(channel)` resolves before the channel
   says attached. Never call the network from the render loop in a way that can
   throw: one exception per frame stalls everything else.
+
+- A puppeteer `page.evaluate(() => promiseReturningCall())` waits for that
+  promise. To look at something mid-way (a speech line on screen), call it
+  without returning it: `() => { call(); }`.
+- A hidden element measures as zero, so an overlap check passes vacuously.
+  Assert that the element is visible before measuring it.
+- Test layouts at the heights real browsers leave (Safari's bars), not only
+  the device's nominal size: 844x390 hid an overlap that 844x340 showed.
+- When matching character art in low poly, place fur where the art has it
+  (crown and cheeks) and as volume (faceted clumps). Spikes all round a ball
+  read as a pufferfish. Compare from the game's camera too, not only from the
+  front.

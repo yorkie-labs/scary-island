@@ -272,4 +272,13 @@ In game, Esc menu: players (👑 owner, 🎮 host), code + copy link,
 
 ## Review
 
-(to fill when done)
+- Shipped in 5b4874c (lobby, shared progress, host-run monsters), then reshaped by playtest
+  feedback (see [20261101-playtest-polish-todo.md](20261101-playtest-polish-todo.md)): no
+  closing a game, an empty island and new Yorkies per game (no credit to the solo save), and
+  the Esc menu never pausing.
+- Verified with scripts/coop.mjs: 32 checks with three headless players on Yorkie Cloud,
+  against the dev server and against the live site.
+- Yorkie findings worth reporting upstream: a Channel on a Document's key breaks
+  `client.remove(doc)`, and `attach(channel)` resolves before the channel is attached.
+- Open: friends' hoodie colours would need another cue if the hero becomes a single-texture
+  (Tripo) model.
