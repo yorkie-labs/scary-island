@@ -92,7 +92,7 @@ export function buildCamp(G, { openShop, clearStage }) {
       G.checkpoint(groundPos(c.x, c.z + 2.5), 'camp');
       await clearStage(1);
       await G.say([
-        { name: 'Yorkie', text: '휴, 여기는 안전해 보여. 모닥불도 있고… 앵무새도 있네?' },
+        { name: '요키', text: '휴, 여기는 안전해 보여. 모닥불도 있고… 앵무새도 있네?' },
         { name: '폴리', text: '안녕, 꼬마 강아지! 이 섬에서 나가고 싶으면 배를 고쳐야 해. 부품은 섬 곳곳에 흩어져 있지.' },
         { name: '폴리', text: '서쪽 숲부터 가 봐. 다이아몬드를 모아 오면 내가 좋은 물건도 줄게! 깍!' },
       ]);

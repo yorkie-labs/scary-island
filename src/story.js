@@ -12,8 +12,8 @@ export async function playIntro(G) {
   await new Promise((r) => setTimeout(r, 50));
   const flight = G.cam.fly(v(-60, 40, 120), v(0, 8, -20), 9);
   await G.say([
-    { name: narrator, text: '아주 먼 어느 나라에, 모험을 좋아하는 요크셔테리어 강아지 Yorkie가 살고 있었어요.' },
-    { name: narrator, text: '어느 날 Yorkie는 오래된 탐험 지도를 발견했어요. 지도에는 아무도 가 본 적 없는 섬이 그려져 있었지요.' },
+    { name: narrator, text: '아주 먼 어느 나라에, 모험을 좋아하는 요크셔테리어 강아지 요키가 살고 있었어요.' },
+    { name: narrator, text: '어느 날 요키는 오래된 탐험 지도를 발견했어요. 지도에는 아무도 가 본 적 없는 섬이 그려져 있었지요.' },
     { name: narrator, text: '섬의 이름은 SCARY ISLAND. "세상에서 가장 아름다운 보물이 잠들어 있는 곳."' },
   ], { stop: true });
   await flight;
@@ -31,7 +31,7 @@ export async function playIntro(G) {
   G.hud.show(true); // Yorkie wakes up: from here the controls are the child's
   G.player.act('cheer');
   await G.say([
-    { name: 'Yorkie', text: '으으… 여긴 어디지? 내 배는…?' },
+    { name: '요키', text: '으으… 여긴 어디지? 내 배는…?' },
     { name: '도움말', text: G.hint('move') },
   ], { stop: true });
   G.cam.release();
@@ -63,9 +63,9 @@ export async function playEnding(G, { ship, dir }) {
     pm.position.copy(ship.position).setY(ship.position.y + 1.9);
   });
   G.cam.fly(start.clone().add(new THREE.Vector3(-dir.x * 8 + 6, 6, -dir.z * 8)), start.clone().setY(2), 2);
-  await G.say([{ name: 'Yorkie', text: '안녕, 무서운 섬! 다시는 안 올 거야~!' }], { stop: true });
+  await G.say([{ name: '요키', text: '안녕, 무서운 섬! 다시는 안 올 거야~!' }], { stop: true });
   G.cam.fly(start.clone().add(new THREE.Vector3(-dir.x * 25, 18, -dir.z * 25)), start.clone().addScaledVector(dir, 40), 7);
-  await G.say([{ name: '이야기', text: 'Yorkie는 배를 타고 섬을 탈출했어요. 멀어지는 섬을 바라보며 휴, 안도의 한숨을 쉬었지요.' }], { stop: true });
+  await G.say([{ name: '이야기', text: '요키는 배를 타고 섬을 탈출했어요. 멀어지는 섬을 바라보며 휴, 안도의 한숨을 쉬었지요.' }], { stop: true });
   await new Promise((r) => setTimeout(r, 2500));
 
   // the beach, one last time: a little pebble opens its eyes
@@ -104,7 +104,7 @@ function showCredits(G) {
   const el = document.getElementById('menu');
   el.innerHTML = `
     <h2>SCARY ISLAND — Find the Way Out!</h2>
-    <p style="font-size:22px">Yorkie가 무사히 섬을 탈출했어요! 🐶⛵</p>
+    <p style="font-size:22px">요키가 무사히 섬을 탈출했어요! 🐶⛵</p>
     <p>별 ${total}/15 · 다이아몬드 ${G.state.diamondsTotal}개 · 플레이 시간 ${mins}분</p>
     <div style="line-height:1.9;font-size:17px;max-width:560px">
       <b>Game Director · Story Writer · Monster Designer · Fun & Difficulty</b><br>Jiyu<br>

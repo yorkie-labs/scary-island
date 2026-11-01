@@ -74,7 +74,7 @@ export function buildHarbor(G) {
   G.addTrigger({ test: (p) => p.z > 46 && p.x > 40 && p.x < 100, enabled: () => G.flag('sealReleased') && !G.flag('harborReached'), onEnter: async () => {
     G.setFlag('harborReached');
     G.checkpoint(groundPos(62, 60), 'harbor');
-    await G.say([{ name: 'Yorkie', text: '항구다! 저기 부두 끝에 배가 있어… 많이 부서졌지만 고칠 수 있을 것 같아!' }]);
+    await G.say([{ name: '요키', text: '항구다! 저기 부두 끝에 배가 있어… 많이 부서졌지만 고칠 수 있을 것 같아!' }]);
   } });
 
   // --- the repair, one step at a time
@@ -101,10 +101,10 @@ export function buildHarbor(G) {
         G.setFlag('boatChecked');
         const missing = Object.entries({ engine: '엔진 부품 (해변 난파선 옆 나무 상자 속)', fuel: '연료통 (숲속 오두막)', crystal: '에너지 크리스털 (광산)', shipKey: '배의 열쇠 (동상 마을)' })
           .filter(([k]) => !S.parts[k]).map(([, v]) => v);
-        await G.say([{ name: 'Yorkie', text: '엔진은 비어 있고, 연료도 없고, 크리스털 자리도 비어 있어. 열쇠 구멍도 있네!' },
-          { name: 'Yorkie', text: missing.length ? `아직 없는 건… ${missing.join(', ')}. 찾으러 가자!` : '그래도 부품은 다 모았어! 하나씩 끼워 보자.' }]);
+        await G.say([{ name: '요키', text: '엔진은 비어 있고, 연료도 없고, 크리스털 자리도 비어 있어. 열쇠 구멍도 있네!' },
+          { name: '요키', text: missing.length ? `아직 없는 건… ${missing.join(', ')}. 찾으러 가자!` : '그래도 부품은 다 모았어! 하나씩 끼워 보자.' }]);
       } else if (s === 'missing') {
-        await G.say([{ name: 'Yorkie', text: '아직 부품이 모자라. 지도를 보고 다시 찾아보자!' }]);
+        await G.say([{ name: '요키', text: '아직 부품이 모자라. 지도를 보고 다시 찾아보자!' }]);
       } else if (s === 'engine') { sfx.clink(); G.setFlag('engineFixed'); G.toast('철컥! 엔진 부품 장착'); }
       else if (s === 'fuel') { sfx.puff(); G.setFlag('fuelFilled'); G.toast('꿀렁꿀렁… 연료 가득!'); }
       else if (s === 'crystal') { sfx.power(); G.setFlag('crystalFitted'); refreshBoat(); G.toast('반짝! 배가 새것처럼 빛나요'); }
@@ -143,9 +143,9 @@ export function buildHarbor(G) {
     G.musicOverride = 'chase';
     G.checkpoint(groundPos(64, 66), 'harbor');
     await G.say([
-      { name: 'Yorkie', text: '부르릉… 시동이 걸렸어! 엔진이 데워질 때까지 조금만 기다리면 돼.' },
+      { name: '요키', text: '부르릉… 시동이 걸렸어! 엔진이 데워질 때까지 조금만 기다리면 돼.' },
       { name: '???', text: '쿵! 쿵! 쿵! 쿵!' },
-      { name: 'Yorkie', text: '으악, 괴물들이 몰려와! 도망치고, 숨고, 버텨야 해!' },
+      { name: '요키', text: '으악, 괴물들이 몰려와! 도망치고, 숨고, 버텨야 해!' },
     ], { stop: true });
     for (const h of hunters) G.toHost(h, 'wake');
     G.toHost(ghost, 'wakeUp');
@@ -195,7 +195,7 @@ function buildSealBarrier(G) {
   if (G.flag('sealReleased')) wall.visible = false;
   else body = G.physics.addCuboid(g.x, y + 3, g.z, 3.8, 3, 0.3);
   G.addInteractable({ pos: new THREE.Vector3(g.x, y, g.z - 1.5), radius: 2.6, label: '보라색 봉인이 길을 막고 있어요', enabled: () => !G.flag('sealReleased'),
-    action: () => G.say([{ name: 'Yorkie', text: '이상한 빛이 길을 막고 있어. 섬 어딘가의 봉인을 풀어야 하나 봐.' }]) });
+    action: () => G.say([{ name: '요키', text: '이상한 빛이 길을 막고 있어. 섬 어딘가의 봉인을 풀어야 하나 봐.' }]) });
   G.onUpdate(() => {
     if (G.flag('sealReleased') && body) { G.physics.remove(body); body = null; }
     if (G.flag('sealReleased') && wall.visible) { wall.material.opacity -= 0.01; if (wall.material.opacity <= 0) wall.visible = false; }

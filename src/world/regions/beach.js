@@ -62,7 +62,7 @@ export function buildBeach(G) {
         sfx.item();
         G.refresh();
         await G.say([
-          { name: 'Yorkie', text: '내 망치다! 파도에 떠밀려 왔나 봐.' },
+          { name: '요키', text: '내 망치다! 파도에 떠밀려 왔나 봐.' },
           { name: '도움말', text: G.hint('hammer') },
         ]);
       },
@@ -89,7 +89,7 @@ export function buildBeach(G) {
       for (const r of rockies) G.toHost(r, 'wake');
       G.cam?.shake?.(0.4);
       await G.say([
-        { name: 'Yorkie', text: '쿵! 쿵! 쿵!… 어, 저 돌들이 움직여?!' },
+        { name: '요키', text: '쿵! 쿵! 쿵!… 어, 저 돌들이 움직여?!' },
         { name: '도움말', text: G.hint('flee') },
       ]);
     }, 1100);
@@ -171,7 +171,7 @@ export function buildBeach(G) {
           id: 'engine', model: items.enginePart(), x: spot.x, z: spot.z, float: 0.25,
           onCollect: async () => {
             S.parts.engine = true; sfx.item(); G.refresh();
-            await G.say([{ name: 'Yorkie', text: '엔진 부품이다! 나중에 배를 고칠 때 꼭 필요하겠어.' }]);
+            await G.say([{ name: '요키', text: '엔진 부품이다! 나중에 배를 고칠 때 꼭 필요하겠어.' }]);
           },
         });
       },
@@ -192,8 +192,8 @@ export function buildBeach(G) {
   G.addTrigger({ pos: G.markers.wreck, radius: 5, enabled: () => flag('awake') && !flag('explored'), onEnter: async () => {
     G.setFlag('explored');
     await G.say([
-      { name: 'Yorkie', text: '내 배가… 완전히 부서졌어.' },
-      { name: 'Yorkie', text: '이걸 고치려면 부품이 잔뜩 필요하겠는걸. 배 옆 나무 상자 틈으로 엔진이 보이는데… 망치가 있으면 부술 수 있을 텐데!' },
+      { name: '요키', text: '내 배가… 완전히 부서졌어.' },
+      { name: '요키', text: '이걸 고치려면 부품이 잔뜩 필요하겠는걸. 배 옆 나무 상자 틈으로 엔진이 보이는데… 망치가 있으면 부술 수 있을 텐데!' },
     ]);
   } });
 
@@ -255,7 +255,7 @@ function buildStoneDoor(G) {
     label: () => (G.state.diamonds >= 3 ? '다이아몬드 3개 끼우기' : `돌문: 다이아몬드가 3개 필요해요 (${G.state.diamonds}/3)`),
     action: async () => {
       if (G.state.diamonds < 3) {
-        await G.say([{ name: 'Yorkie', text: '구멍이 세 개 있어… 다이아몬드를 끼우면 열릴 것 같아!' }]);
+        await G.say([{ name: '요키', text: '구멍이 세 개 있어… 다이아몬드를 끼우면 열릴 것 같아!' }]);
         return;
       }
       // pay and open in the same moment (saved together), then animate

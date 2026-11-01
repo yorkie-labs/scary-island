@@ -51,7 +51,7 @@ export function buildVillage(G, { clearStage }) {
   G.on('watcherObserved', async (w) => {
     if (w.region !== 'village' || G.flag('villageWatcherSeen') || G.mode !== 'play' || !G.flag('villageEntered')) return;
     G.setFlag('villageWatcherSeen');
-    await G.say([{ name: 'Yorkie', text: '여기 동상들도 내가 안 볼 때만 움직이는구나. 다 바라볼 수는 없으니… 손전등을 써 보자!' }]);
+    await G.say([{ name: '요키', text: '여기 동상들도 내가 안 볼 때만 움직이는구나. 다 바라볼 수는 없으니… 손전등을 써 보자!' }]);
   });
   // when the ancient gate opens, the village statues fall asleep for good
   const sleepStatues = (quiet) => {
@@ -133,11 +133,11 @@ function buildVillageDoor(G) {
     pos, radius: 3, enabled: () => !G.flag('villageDoorOpen'),
     label: () => (G.state.parts.crystal ? '에너지 크리스털을 비추기' : '크리스털 모양 홈이 있는 문'),
     action: async () => {
-      if (!G.state.parts.crystal) { await G.say([{ name: 'Yorkie', text: '문에 크리스털 모양 홈이 있어… 반짝이는 크리스털이 있으면 열릴 것 같아.' }]); return; }
+      if (!G.state.parts.crystal) { await G.say([{ name: '요키', text: '문에 크리스털 모양 홈이 있어… 반짝이는 크리스털이 있으면 열릴 것 같아.' }]); return; }
       sfx.power();
       G.setFlag('villageDoorOpen');
       open(false);
-      await G.say([{ name: 'Yorkie', text: '크리스털에 반응해서 문이 열렸어! 크리스털은… 다행히 그대로 있네.' }]);
+      await G.say([{ name: '요키', text: '크리스털에 반응해서 문이 열렸어! 크리스털은… 다행히 그대로 있네.' }]);
     },
   });
 }
@@ -193,7 +193,7 @@ function buildGuardianArena(G, { clearStage }) {
     pos: gatePos, radius: 2.8, enabled: () => !G.flag('ancientGateOpen'),
     label: () => (S.keys >= 3 ? '열쇠 3개로 고대 문 열기' : `고대 문: 열쇠 구멍이 3개 (${S.keys}/3)`),
     action: async () => {
-      if (S.keys < 3) { await G.say([{ name: 'Yorkie', text: '열쇠 구멍이 세 개야. 마을 어딘가에 열쇠가 숨어 있을 거야.' }]); return; }
+      if (S.keys < 3) { await G.say([{ name: '요키', text: '열쇠 구멍이 세 개야. 마을 어딘가에 열쇠가 숨어 있을 거야.' }]); return; }
       // spend the keys and open in the same moment (saved together), then animate
       S.keys = 0;
       G.checkpoint(gatePos, 'village');
@@ -297,7 +297,7 @@ function buildGuardianArena(G, { clearStage }) {
       onCollect: async () => {
         G.state.parts.shipKey = true; sfx.item(); G.refresh();
         await clearStage(4);
-        await G.say([{ name: 'Yorkie', text: '배의 열쇠다! 이제 남쪽 항구로 가는 길도 열렸을 거야. 탈출하자!' }]);
+        await G.say([{ name: '요키', text: '배의 열쇠다! 이제 남쪽 항구로 가는 길도 열렸을 거야. 탈출하자!' }]);
       },
     });
   };
@@ -331,7 +331,7 @@ function buildGuardianArena(G, { clearStage }) {
     spawnShipKey();
     await G.say([
       { name: '섬의 수호자', text: '……빛이… 돌아왔구나. 작은 용사여… 이것을 가져가라……' },
-      { name: 'Yorkie', text: '수호자가 잠들었어. 그리고… 봉인이 풀렸다!' },
+      { name: '요키', text: '수호자가 잠들었어. 그리고… 봉인이 풀렸다!' },
     ], { stop: true });
   }
 }

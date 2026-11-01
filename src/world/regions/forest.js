@@ -52,7 +52,7 @@ export function buildForest(G, { clearStage }) {
       onCollect: async () => {
         S.items.flashlight = true; sfx.item(); G.refresh();
         await G.say([
-          { name: 'Yorkie', text: '손전등이다! 이 어두운 숲에서 딱 필요한 거야.' },
+          { name: '요키', text: '손전등이다! 이 어두운 숲에서 딱 필요한 거야.' },
           { name: '도움말', text: G.hint('flashlight') },
         ]);
       },
@@ -67,7 +67,7 @@ export function buildForest(G, { clearStage }) {
       id: 'scissors', model: items.scissors(), x: -22, z: 22, y: heightAt(-22, 22) + 0.45, float: 0.35,
       onCollect: async () => {
         S.items.scissors = true; sfx.item(); G.refresh();
-        await G.say([{ name: 'Yorkie', text: '가위다! 이걸로 덩굴을 자를 수 있겠어.' }, { name: '도움말', text: G.hint('scissors') }]);
+        await G.say([{ name: '요키', text: '가위다! 이걸로 덩굴을 자를 수 있겠어.' }, { name: '도움말', text: G.hint('scissors') }]);
       },
     });
   }
@@ -75,7 +75,7 @@ export function buildForest(G, { clearStage }) {
     pos: new THREE.Vector3(GATES.vines.x + 6, 0, GATES.vines.z), radius: 9, enabled: () => G.flag('campReached') && !G.flag('forestEntrance'),
     onEnter: async () => {
       G.setFlag('forestEntrance');
-      await G.say([{ name: 'Yorkie', text: '숲 입구가 덩굴로 꽁꽁 막혀 있어… 자를 게 필요해.' }, { name: 'Yorkie', text: '어? 저기 그루터기 위에 뭔가 반짝이는데?' }]);
+      await G.say([{ name: '요키', text: '숲 입구가 덩굴로 꽁꽁 막혀 있어… 자를 게 필요해.' }, { name: '요키', text: '어? 저기 그루터기 위에 뭔가 반짝이는데?' }]);
     },
   });
 
@@ -91,7 +91,7 @@ export function buildForest(G, { clearStage }) {
     if (w.region !== 'forest' || G.flag('watcherSeen') || G.mode !== 'play') return;
     G.setFlag('watcherSeen');
     await G.say([
-      { name: 'Yorkie', text: '저 동상… 방금 움직인 것 같은데?!' },
+      { name: '요키', text: '저 동상… 방금 움직인 것 같은데?!' },
       { name: '도움말', text: G.hint('watcher') },
     ]);
   });
@@ -99,7 +99,7 @@ export function buildForest(G, { clearStage }) {
   G.addTrigger({ pos: new THREE.Vector3(-66, 0, -6), radius: 7, enabled: () => G.flag('vinesCut') && !G.flag('pastWatchers'), onEnter: async () => {
     G.setFlag('pastWatchers'); G.setFlag('watcherSeen');
     for (const w of watchers) w.sleep(); // first, so none can bump Yorkie while the line is up
-    await G.say([{ name: 'Yorkie', text: '휴~ 무사히 지나왔어! 동상들도 이제 움직이지 않네.' }]);
+    await G.say([{ name: '요키', text: '휴~ 무사히 지나왔어! 동상들도 이제 움직이지 않네.' }]);
   } });
   if (G.flag('pastWatchers')) for (const w of watchers) w.sleep(); // a save from after the walk
   G.on('shared', ({ key }) => { if (key === 'pastWatchers') for (const w of watchers) w.sleep(); }); // a friend got through
@@ -113,7 +113,7 @@ export function buildForest(G, { clearStage }) {
   G.on('mushyBlown', () => { if (!mushyTold) { mushyTold = true; G.toast('휘이잉~ 버섯 유령이 날아갔어요!'); } });
   G.addTrigger({ pos: new THREE.Vector3(-66, 0, -10), radius: 9, enabled: () => G.flag('pastWatchers') && !G.flag('mushyIntro'), onEnter: async () => {
     G.setFlag('mushyIntro');
-    await G.say([{ name: 'Yorkie', text: '보라색 연기를 뿜는 버섯 유령이야! 저 바람개비 장치를 켜면 날려 버릴 수 있을까?' }]);
+    await G.say([{ name: '요키', text: '보라색 연기를 뿜는 버섯 유령이야! 저 바람개비 장치를 켜면 날려 버릴 수 있을까?' }]);
   } });
 
   // --- the hut
@@ -129,8 +129,8 @@ export function buildForest(G, { clearStage }) {
       S.parts.generatorPart = true; S.parts.fuel = true;
       sfx.item(); G.refresh();
       await G.say([
-        { name: 'Yorkie', text: '먼지투성이 오두막이야… 어! 발전기 부품이랑 연료통이 있어!' },
-        { name: 'Yorkie', text: '연료통은 배에 넣으면 되겠다. 발전기 부품은… 광산 문 옆 발전기에 맞을 것 같아!' },
+        { name: '요키', text: '먼지투성이 오두막이야… 어! 발전기 부품이랑 연료통이 있어!' },
+        { name: '요키', text: '연료통은 배에 넣으면 되겠다. 발전기 부품은… 광산 문 옆 발전기에 맞을 것 같아!' },
       ]);
     },
   });
@@ -191,7 +191,7 @@ function buildVines(G) {
 
   const tryCut = async () => {
     if (G.flag('vinesCut')) return;
-    if (!G.state.items.scissors) { await G.say([{ name: 'Yorkie', text: '덩굴이 너무 질겨… 맨손으로는 안 되겠어. 자를 게 필요해!' }]); return; }
+    if (!G.state.items.scissors) { await G.say([{ name: '요키', text: '덩굴이 너무 질겨… 맨손으로는 안 되겠어. 자를 게 필요해!' }]); return; }
     sfx.snip(); setTimeout(() => sfx.snip(), 250);
     G.setFlag('vinesCut');
     cut(false);
@@ -223,7 +223,7 @@ function buildGeneratorAndMineDoor(G, { clearStage }) {
     pos: genPos, radius: 2.4, enabled: () => !G.flag('generatorFixed'),
     label: () => (G.state.parts.generatorPart ? '발전기 고치기' : '고장 난 발전기 (부품이 필요해요)'),
     action: async () => {
-      if (!G.state.parts.generatorPart) { await G.say([{ name: 'Yorkie', text: '부품 하나가 빠져 있어. 숲속 오두막에 있을지도 몰라.' }]); return; }
+      if (!G.state.parts.generatorPart) { await G.say([{ name: '요키', text: '부품 하나가 빠져 있어. 숲속 오두막에 있을지도 몰라.' }]); return; }
       sfx.power();
       G.cam.shake(0.2);
       powerOn();
@@ -263,11 +263,11 @@ function buildGeneratorAndMineDoor(G, { clearStage }) {
     pos, radius: 3, enabled: () => !G.flag('mineDoorOpen'),
     label: () => (G.flag('generatorFixed') ? '광산 문 열기' : '굳게 닫힌 광산 문 (전기가 필요해요)'),
     action: async () => {
-      if (!G.flag('generatorFixed')) { await G.say([{ name: 'Yorkie', text: '문이 꿈쩍도 안 해. 옆에 있는 발전기를 켜야 하나 봐.' }]); return; }
+      if (!G.flag('generatorFixed')) { await G.say([{ name: '요키', text: '문이 꿈쩍도 안 해. 옆에 있는 발전기를 켜야 하나 봐.' }]); return; }
       G.setFlag('mineDoorOpen');
       open(false);
       await clearStage(2);
-      await G.say([{ name: 'Yorkie', text: '광산 문이 열렸다! 저 안쪽에 엘리베이터가 보여.' }]);
+      await G.say([{ name: '요키', text: '광산 문이 열렸다! 저 안쪽에 엘리베이터가 보여.' }]);
     },
   });
 }

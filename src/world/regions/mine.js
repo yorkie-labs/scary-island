@@ -64,7 +64,7 @@ export function buildMine(G, { clearStage }) {
     if (!G.flag('inMine')) {
       G.setFlag('inMine');
       G.checkpoint(LANDING, 'mine');
-      await G.say([{ name: 'Yorkie', text: '우와… 벽마다 보석이 반짝반짝해! 광석을 캐서 다이아몬드를 모아 보자.' }]);
+      await G.say([{ name: '요키', text: '우와… 벽마다 보석이 반짝반짝해! 광석을 캐서 다이아몬드를 모아 보자.' }]);
     } else G.checkpoint(LANDING, 'mine');
   };
   G.addInteractable({ pos: new THREE.Vector3(SURFACE.x, sy, SURFACE.z), radius: 2.8, label: '엘리베이터 타고 지하로 ⬇', enabled: () => G.flag('mineDoorOpen'), action: goDown });
@@ -121,7 +121,7 @@ export function buildMine(G, { clearStage }) {
     G.setFlag('golemAsleep');
     await new Promise((r) => setTimeout(r, 1200));
     spawnCrystal(); // first, so the line points at something (talk doesn't stop the game)
-    G.say([{ name: 'Yorkie', text: '골렘이 작은 돌멩이가 되어서 쿨쿨 자고 있어… 저기 빛나는 건 뭐지?' }]);
+    G.say([{ name: '요키', text: '골렘이 작은 돌멩이가 되어서 쿨쿨 자고 있어… 저기 빛나는 건 뭐지?' }]);
   } });
   if (G.flag('golemAsleep')) { golem.state = 'sleep'; golem.t = 99; golem.model.scale.setScalar(0.2); golem.mover.setEnabled(false); }
   G.addTrigger({
@@ -148,7 +148,7 @@ export function buildMine(G, { clearStage }) {
       onCollect: async () => {
         S.parts.crystal = true; sfx.item(); G.refresh();
         await clearStage(3);
-        await G.say([{ name: 'Yorkie', text: '에너지 크리스털이다! 이걸로 배를 움직일 수 있을 거야.' }, { name: 'Yorkie', text: '동쪽 동상 마을 문에 크리스털 모양 구멍이 있었지… 가 보자!' }]);
+        await G.say([{ name: '요키', text: '에너지 크리스털이다! 이걸로 배를 움직일 수 있을 거야.' }, { name: '요키', text: '동쪽 동상 마을 문에 크리스털 모양 구멍이 있었지… 가 보자!' }]);
       },
     });
   };
@@ -294,7 +294,7 @@ function buildCartChase(G) {
     onEnter: async () => {
       for (const r of rockies) G.toHost(r, 'wake');
       G.cam.shake(0.4);
-      await G.say([{ name: 'Yorkie', text: '여기에도 돌 괴물이?! 저 광산 카트에 올라타자!' }, { name: '도움말', text: G.hint('cart') }]);
+      await G.say([{ name: '요키', text: '여기에도 돌 괴물이?! 저 광산 카트에 올라타자!' }, { name: '도움말', text: G.hint('cart') }]);
     },
   });
 
