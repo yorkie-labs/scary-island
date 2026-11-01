@@ -124,7 +124,7 @@ export function buildHarbor(G) {
   };
   const route = (from, to) => (onDock(to) && !onDock(from) ? dockFoot : to);
   const hunters = [
-    createRocky(G, { x: 54, z: 62, id: 'h1', hunter: true, route }),
+    createRocky(G, { x: 57, z: 63, id: 'h1', hunter: true, route }), // (54, 62) was inside the fisher's shack: it never moved
     createRocky(G, { x: 72, z: 62, id: 'h2', scale: 1.2, hunter: true, route }),
     createRocky(G, { x: 60, z: 56, id: 'h3', hunter: true, route }),
   ];
@@ -135,7 +135,8 @@ export function buildHarbor(G) {
   ghost.reset = () => { ghostReset(); if (!warm) { ghost.state = 'sleep'; ghost.sleepFor = 1e9; } };
   ghost.wakeUp = () => { ghost.sleepFor = 0; }; // the last chase is on
   ghost.calm = () => { ghost.state = 'sleep'; ghost.sleepFor = 1e9; }; // and over
-  for (const [x, z] of [[54, 72], [72, 62], [60, 56]]) createHideBush(G, x, z);
+  // hiding bushes between the hunters, never on a spot a hunter starts from or goes home to
+  for (const [x, z] of [[54, 72], [67, 66], [64, 54]]) createHideBush(G, x, z);
 
   async function startChase() {
     warm = { t: WARMUP };
