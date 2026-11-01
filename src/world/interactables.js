@@ -93,7 +93,7 @@ export function createPotion(G, id, x, z, y) {
   G.addPickup({
     id: `potion-${id}`, model: items.potion(), pos: v(x, y ?? heightAt(x, z), z), float: 0.2,
     onCollect: () => {
-      if (G.state.potions < maxPotions(G.state)) { G.state.potions++; sfx.pickup(); G.toast('🧪 하트 포션을 챙겼어요! (4번을 누르면 마셔요)'); } else { heal(G.state, 1); sfx.heal(); G.toast('가방이 꽉 차서 바로 마셨어요'); }
+      if (G.state.potions < maxPotions(G.state)) { G.state.potions++; sfx.pickup(); G.toast(`🧪 하트 포션을 챙겼어요! (${G.touch ? '🧪 버튼' : '4번'}을 누르면 마셔요)`); } else { heal(G.state, 1); sfx.heal(); G.toast('가방이 꽉 차서 바로 마셨어요'); }
     },
   });
 }

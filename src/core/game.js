@@ -186,18 +186,26 @@ export function createGame({ scene, camera, renderer, look, physics, state, inpu
       input.enabled = G.mode === 'play';
     },
 
-    // Help text that names the right controls for the current scheme.
+    // Help text that names the right controls: mouse and keys, or (on a
+    // phone or tablet) taps, the joystick and the touch buttons.
     hint(name) {
+      const T = !!G.touch;
       const H = {
-        move: '땅을 클릭하면 그곳으로 걸어가요(꾹 누르면 계속 따라가요). 위쪽 미션과 오른쪽 지도의 ⭐ 표시를 따라가 보세요!',
-        hammer: '반짝이는 광석을 클릭하면 다가가서 망치로 쳐요. 두 번 치면 다이아몬드가 나와요!',
-        flee: '돌 괴물 Rocky예요! 멀리 땅을 클릭해서 도망치거나, 꽃 덤불 속에 숨거나, Rocky를 클릭해서 망치로 두 번 쳐 기절시킬 수 있어요.',
-        roll: !hasAbility(state, 'roll') ? '빨간 원 밖으로 걸어서 피해요' : '2번을 누르면 마우스 쪽으로 굴러서 피해요',
-        scissors: '가위는 가지고만 있으면 돼요. 덩굴을 클릭하면 싹둑 잘라요.',
-        watcher: 'Watcher는 Yorkie가 바라보는 쪽에 있으면 움직이지 못해요. 동상을 오른쪽 클릭해서 손전등으로 비추면 한동안 꽁꽁 얼어요!',
-        flashlight: '오른쪽 클릭을 하면 마우스 쪽으로 손전등을 비춰요. 빛에 닿은 동상은 잠깐 꼼짝 못 해요!',
-        devices: '섬의 수호자는 Yorkie가 바라보면 느려지고, 손전등(오른쪽 클릭) 빛을 받으면 멈춰요. 그 사이에 빛나는 크리스털 장치 3개를 클릭해서 켜세요!',
-        cart: '카트를 클릭해서 타요! 노란 표지판이 깜빡이면 Space나 클릭으로 점프해서 들보를 넘어요.',
+        move: T ? '땅을 톡 하면 그곳으로 걸어가요. 화면 왼쪽을 누르고 밀면 조이스틱으로도 움직여요. 위쪽 미션과 지도의 ⭐ 표시를 따라가 보세요!'
+          : '땅을 클릭하면 그곳으로 걸어가요(꾹 누르면 계속 따라가요). 위쪽 미션과 오른쪽 지도의 ⭐ 표시를 따라가 보세요!',
+        hammer: T ? '반짝이는 광석을 톡 하거나, 가까이 가서 🔨 버튼을 누르면 망치로 쳐요. 두 번 치면 다이아몬드가 나와요!'
+          : '반짝이는 광석을 클릭하면 다가가서 망치로 쳐요. 두 번 치면 다이아몬드가 나와요!',
+        flee: T ? '돌 괴물 Rocky예요! 멀리 도망치거나, 꽃 덤불 속에 숨거나, Rocky를 톡(또는 🔨) 해서 망치로 두 번 쳐 기절시킬 수 있어요.'
+          : '돌 괴물 Rocky예요! 멀리 땅을 클릭해서 도망치거나, 꽃 덤불 속에 숨거나, Rocky를 클릭해서 망치로 두 번 쳐 기절시킬 수 있어요.',
+        roll: !hasAbility(state, 'roll') ? '빨간 원 밖으로 걸어서 피해요' : T ? '🌀 버튼을 누르면 보고 있는 쪽으로 굴러서 피해요' : '2번을 누르면 마우스 쪽으로 굴러서 피해요',
+        scissors: T ? '가위는 가지고만 있으면 돼요. 덩굴을 톡 하면 싹둑 잘라요.' : '가위는 가지고만 있으면 돼요. 덩굴을 클릭하면 싹둑 잘라요.',
+        watcher: T ? 'Watcher는 Yorkie가 바라보는 쪽에 있으면 움직이지 못해요. 동상 쪽을 보고 🔦 버튼을 누르면 한동안 꽁꽁 얼어요!'
+          : 'Watcher는 Yorkie가 바라보는 쪽에 있으면 움직이지 못해요. 동상을 오른쪽 클릭해서 손전등으로 비추면 한동안 꽁꽁 얼어요!',
+        flashlight: T ? '🔦 버튼을 누르면 Yorkie가 보는 쪽으로 손전등을 비춰요. 빛에 닿은 동상은 잠깐 꼼짝 못 해요!'
+          : '오른쪽 클릭을 하면 마우스 쪽으로 손전등을 비춰요. 빛에 닿은 동상은 잠깐 꼼짝 못 해요!',
+        devices: `섬의 수호자는 Yorkie가 바라보면 느려지고, 손전등(${T ? '🔦' : '오른쪽 클릭'}) 빛을 받으면 멈춰요. 그 사이에 빛나는 크리스털 장치 3개를 ${T ? '톡' : '클릭'}해서 켜세요!`,
+        cart: T ? '카트를 톡 해서 타요! 노란 표지판이 깜빡이면 화면을 톡(또는 ⤴) 해서 점프해 들보를 넘어요.'
+          : '카트를 클릭해서 타요! 노란 표지판이 깜빡이면 Space나 클릭으로 점프해서 들보를 넘어요.',
       };
       return H[name] ?? '';
     },
@@ -340,8 +348,8 @@ export function createGame({ scene, camera, renderer, look, physics, state, inpu
         sfx.fanfare();
         G.player.act('cheer');
         const how = learned === 'roll'
-          ? '2번을 누르면 마우스 쪽으로 데굴데굴 굴러요. 구르는 동안은 다치지 않아요!'
-          : '3번을 누르면 폴짝 뛰어올라요!';
+          ? `${G.touch ? '🌀 버튼을 누르면 보고 있는 쪽으로' : '2번을 누르면 마우스 쪽으로'} 데굴데굴 굴러요. 구르는 동안은 다치지 않아요!`
+          : `${G.touch ? '⤴ 버튼을' : '3번을'} 누르면 폴짝 뛰어올라요!`;
         G.say([{ name: 'Yorkie', text: `간식을 먹었더니 힘이 솟아! 새 능력: ${learned === 'roll' ? '구르기 🌀' : '점프 ⤴️'}` }, { name: '도움말', text: how }]);
       }
     },

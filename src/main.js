@@ -292,7 +292,7 @@ function bindKeys(G, screens) {
   // 1 sniff, 2 roll, 3 jump, 4 potion (like a Diablo hotbar)
   input.on('Digit1', () => { if (playing()) G.player.act('sniff'); });
   input.on('Digit2', () => { if (playing()) G.emit('rollTowardCursor'); });
-  input.on('Digit3', () => { if (playing()) G.player.jump(); });
+  input.on('Digit3', (e) => { if (G.riding?.()) { if (!e?.code) G.emit('rideJump'); } else if (playing()) G.player.jump(); }); // (a key press hops the cart in mine.js; the ⤴ button here)
   input.on('Digit4', () => { if (playing()) drinkPotion(G); });
   // a click anywhere advances dialogue
   addEventListener('mousedown', () => { if (hud.inDialog && !screens.menuOpen && !screens.shopOpen) hud.advanceDialog(); });

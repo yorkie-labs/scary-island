@@ -49,7 +49,7 @@ export const STAGES = [
     steps: [
       { text: '동상 마을로 들어가기', done: f('villageEntered'), at: 'villageDoor' },
       { text: '동상이 언제 움직이는지 살펴보기', done: f('villageWatcherSeen'), showIf: (s) => !s.flags.ancientGateOpen && s.keys < 3 },
-      { text: '손전등으로 동상 멈추기 (오른쪽 클릭)', done: f('watcherFrozen'), showIf: (s) => !s.flags.ancientGateOpen && s.keys < 3 },
+      { text: '손전등(🔦)으로 동상 멈추기', done: f('watcherFrozen'), showIf: (s) => !s.flags.ancientGateOpen && s.keys < 3 },
       { text: '마을의 열쇠 3개 모으기', done: (s) => s.keys >= 3 || f('ancientGateOpen')(s), at: 'key', count: (s) => `${Math.min(3, s.keys)}/3` },
       { text: '고대 문 열기', done: f('ancientGateOpen'), at: 'ancientGate' },
       { text: '섬의 수호자를 만나기', done: f('guardianMet'), at: 'guardian' },

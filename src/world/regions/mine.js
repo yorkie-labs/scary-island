@@ -333,7 +333,7 @@ function buildCartChase(G) {
     // a beam coming up: blink its sign and say "jump now"
     const next = signs.find((b) => !ride.hits.has(b.z) && ride.z - b.z > 0 && ride.z - b.z < WARN_AHEAD);
     for (const b of signs) b.sign.material.emissiveIntensity = b === next ? 0.6 + Math.abs(Math.sin(G.time * 12)) * 1.6 : 0.6;
-    G.hud.prompt(next ? (ride.y > 0.01 ? '⤴ 휙!' : '⤴ 지금 점프! (Space · 클릭)') : '🛒 꽉 잡아요!');
+    G.hud.prompt(next ? (ride.y > 0.01 ? '⤴ 휙!' : (G.touch ? '⤴ 지금 점프! (화면을 톡)' : '⤴ 지금 점프! (Space · 클릭)')) : '🛒 꽉 잡아요!');
     for (const bz of BEAMS) {
       if (!ride.hits.has(bz) && Math.abs(ride.z - bz) < 0.4) {
         ride.hits.add(bz);
