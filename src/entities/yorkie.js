@@ -43,10 +43,13 @@ export function createHammer() {
   const g = pivot('hammer');
   g.add(mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.52, 6), C.wood, { y: 0.2 }));
   const head = pivot('hammerHead', 0, 0.48, 0);
-  // a grey sledgehammer head, as in the character art
-  head.add(mesh(new THREE.BoxGeometry(0.3, 0.17, 0.17), '#a3a8ae', { extra: { metalness: 0.4, roughness: 0.45 } }));
-  head.add(mesh(new THREE.BoxGeometry(0.035, 0.19, 0.19), '#7d8288', { x: 0.135, extra: { metalness: 0.4 } }));
-  head.add(mesh(new THREE.BoxGeometry(0.035, 0.19, 0.19), '#7d8288', { x: -0.135, extra: { metalness: 0.4 } }));
+  // a grey claw hammer, as the character art carries it: a round striking
+  // face on one side, a curved claw on the other
+  const steel = { metalness: 0.4, roughness: 0.45 };
+  head.add(mesh(new THREE.BoxGeometry(0.14, 0.13, 0.12), '#a3a8ae', { extra: steel }));
+  head.add(mesh(new THREE.CylinderGeometry(0.075, 0.07, 0.11, 8), '#8d9298', { x: 0.115, rz: Math.PI / 2, extra: steel }));
+  head.add(mesh(new THREE.BoxGeometry(0.16, 0.06, 0.1), '#a3a8ae', { x: -0.12, y: 0.04, rz: -0.45, extra: steel }));
+  head.add(mesh(new THREE.BoxGeometry(0.08, 0.05, 0.09), '#8d9298', { x: -0.2, y: -0.01, rz: -1.0, extra: steel }));
   g.add(head);
   return g;
 }
@@ -88,8 +91,9 @@ export function createYorkie() {
   for (const [x, rz] of [[-0.05, 0.25], [0, 0], [0.05, -0.25]]) torso.add(mesh(new THREE.ConeGeometry(0.045, 0.11, 4), C.silk, { x, y: 0.27, z: 0.12, rx: Math.PI - 0.5, rz }));
   // a fluffy tail peeking out under the hoodie
   const tail = pivot('tail', 0, 0.02, -0.15);
-  tail.add(mesh(new THREE.ConeGeometry(0.055, 0.16, 5), C.fur, { y: 0.08, rx: -0.3 }));
-  tail.add(mesh(new THREE.ConeGeometry(0.035, 0.12, 4), C.furDark, { y: 0.12, z: -0.03, rx: -0.6 }));
+  tail.add(mesh(new THREE.IcosahedronGeometry(0.06, 0), C.furDark, { y: 0.05, z: -0.02, sy: 1.3, rx: -0.5 }));
+  tail.add(mesh(new THREE.IcosahedronGeometry(0.055, 0), C.fur, { y: 0.13, z: -0.04, sy: 1.3, rx: -0.2 }));
+  tail.add(mesh(new THREE.ConeGeometry(0.045, 0.1, 4), C.silk, { y: 0.21, z: 0.0, rx: 0.5 }));
   torso.add(tail);
 
   // Arms: hoodie sleeves with furry paws. The right paw holds the hammer.
@@ -114,38 +118,43 @@ export function createYorkie() {
   torso.add(mesh(new THREE.SphereGeometry(0.15, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), C.hoodieDark, { y: 0.27, z: -0.08, rx: -0.6, sx: 1.1 }));
   const head = pivot('head', 0, 0.2, 0);
   neck.add(head);
-  // The head, after the character art: wide and soft, a smooth tan face,
-  // and the fur only where the art has it: flame-like locks standing up on
-  // the crown, and darker fur falling from the cheeks at the sides. Fur all
-  // round the ball made a pufferfish.
-  head.add(mesh(new THREE.IcosahedronGeometry(0.25, 1), C.fur, { sx: 1.16, sy: 0.96, sz: 0.95 }));
-  head.add(mesh(new THREE.IcosahedronGeometry(0.235, 1), C.furDark, { z: -0.07, y: 0.03, sx: 1.12 }));
-  // a flat flame of fur: base on the head, tip out along (dx, dy, dz)
+  // The head, after the character art: a big mass of fur around a smooth tan
+  // face. The fur is built from chunky faceted clumps (low-poly fur), not
+  // spikes: dark brown at the back and down the cheeks, golden on top, with a
+  // few flame-like locks on the crown sweeping up and back. (Spikes all round
+  // a ball made a pufferfish.)
+  head.add(mesh(new THREE.IcosahedronGeometry(0.25, 1), C.fur, { sx: 1.1, sy: 0.96, sz: 0.95 }));
+  const clump = (x, y, z, r, color, { sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0 } = {}) =>
+    head.add(mesh(new THREE.IcosahedronGeometry(r, 0), color, { x, y, z, sx, sy, sz, rx, ry, rz }));
+  // the fur mass: the back of the head, darker
+  clump(0, 0.04, -0.06, 0.22, C.furDark, { sx: 1.15, sy: 1.0, sz: 0.9, rz: 0.3 });
+  clump(0, 0.12, -0.02, 0.21, C.fur, { sx: 1.05, sy: 0.9, sz: 0.9, rx: 0.4 });
+  for (const side of [-1, 1]) {
+    // the cheeks: darker fur fanning out at the sides and falling past the jaw
+    clump(side * 0.21, -0.02, -0.02, 0.15, C.furDark, { sx: 0.8, sz: 1.1, rz: side * 0.6, ry: side * 0.4 });
+    clump(side * 0.19, -0.13, 0.03, 0.12, C.furDark, { sx: 0.85, sy: 1.2, rz: side * 0.9 });
+    clump(side * 0.15, -0.17, 0.12, 0.09, C.fur, { rz: side * 0.5 });
+    // a little V of fur over each eye (the brave look)
+    head.add(mesh(new THREE.BoxGeometry(0.075, 0.018, 0.02), '#c98a3e', { x: side * 0.1, y: 0.115, z: 0.225, rz: side * 0.35 }));
+  }
+  // the crown: flame-like locks standing up and sweeping back
   const UP = new THREE.Vector3(0, 1, 0);
   const lock = (x, y, z, dx, dy, dz, len, r, color) => {
     const p = pivot('lock', x, y, z);
     p.quaternion.setFromUnitVectors(UP, new THREE.Vector3(dx, dy, dz).normalize());
-    p.add(mesh(new THREE.ConeGeometry(r, len, 4), color, { y: len / 2, sz: 0.45 }));
+    p.add(mesh(new THREE.ConeGeometry(r, len, 4), color, { y: len / 2, sz: 0.55 }));
     head.add(p);
   };
-  // the crown: three wide flames standing up, leaning a little forward
-  lock(0, 0.2, 0.05, 0, 1, 0.3, 0.17, 0.1, C.silk);
-  lock(0.1, 0.18, 0.03, 0.5, 1, 0.2, 0.12, 0.085, C.silk);
-  lock(-0.1, 0.18, 0.04, -0.5, 1, 0.25, 0.12, 0.085, C.silk);
-  for (const side of [-1, 1]) {
-    // the cheeks: short darker fur lying along the sides and falling down,
-    // many small points so only the edge is jagged
-    lock(side * 0.25, 0.1, -0.02, side * 0.9, -0.3, 0, 0.08, 0.07, C.furDark);
-    lock(side * 0.27, 0.0, 0.0, side * 0.8, -0.6, 0, 0.09, 0.075, C.furDark);
-    lock(side * 0.25, -0.09, 0.02, side * 0.55, -1, 0, 0.09, 0.075, C.furDark);
-    lock(side * 0.19, -0.16, 0.06, side * 0.3, -1, 0.15, 0.08, 0.07, C.fur);
-    // the brow: a little V of fur over each eye (the brave look)
-    head.add(mesh(new THREE.BoxGeometry(0.075, 0.018, 0.02), '#c98a3e', { x: side * 0.1, y: 0.115, z: 0.225, rz: side * 0.35 }));
-  }
-  head.add(mesh(new THREE.IcosahedronGeometry(0.13, 1), C.muzzle, { y: -0.08, z: 0.17, sx: 1.1, sy: 0.8 }));
-  head.add(mesh(new THREE.IcosahedronGeometry(0.04, 0), C.nose, { y: -0.04, z: 0.29 }));
+  // a crest of wide, short flames (a single tall one read as a horn)
+  lock(0, 0.2, 0.06, 0, 1, 0.1, 0.13, 0.11, C.silk);
+  lock(0.09, 0.19, 0.03, 0.45, 1, -0.1, 0.11, 0.1, C.silk);
+  lock(-0.09, 0.19, 0.03, -0.45, 1, -0.05, 0.11, 0.1, C.silk);
+  lock(0.05, 0.21, -0.07, 0.25, 1, -0.5, 0.1, 0.1, C.fur);
+  lock(-0.05, 0.21, -0.07, -0.25, 1, -0.5, 0.1, 0.1, C.fur);
+  head.add(mesh(new THREE.IcosahedronGeometry(0.13, 1), C.muzzle, { y: -0.08, z: 0.19, sx: 1.1, sy: 0.8, sz: 1.1 }));
+  head.add(mesh(new THREE.IcosahedronGeometry(0.04, 0), C.nose, { y: -0.04, z: 0.325 }));
   // a little smile under the nose
-  head.add(mesh(new THREE.TorusGeometry(0.03, 0.007, 4, 8, Math.PI), C.nose, { y: -0.095, z: 0.283, rz: Math.PI, sx: 1.2 }));
+  head.add(mesh(new THREE.TorusGeometry(0.03, 0.007, 4, 8, Math.PI), C.nose, { y: -0.1, z: 0.31, rz: Math.PI, sx: 1.2 }));
   // big round eyes with a highlight
   const eyes = [];
   for (const side of [-1, 1]) {
@@ -161,7 +170,7 @@ export function createYorkie() {
   const ears = [];
   for (const side of [-1, 1]) {
     const ear = pivot('ear', side * 0.19, 0.15, -0.02);
-    ear.rotation.z = -side * 0.55;
+    ear.rotation.set(0, side * 0.75, -side * 0.5); // turned out, so the pink shows from the side too
     ear.add(mesh(new THREE.ConeGeometry(0.1, 0.25, 4), C.furDark, { y: 0.11, sz: 0.45 }));
     ear.add(mesh(new THREE.ConeGeometry(0.085, 0.21, 4), C.fur, { y: 0.1, z: 0.012, sz: 0.4 }));
     ear.add(mesh(new THREE.ConeGeometry(0.055, 0.15, 4), '#f2a99a', { y: 0.08, z: 0.025, sz: 0.3 }));
