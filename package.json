@@ -16,6 +16,7 @@
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",
     "@fontsource/jua": "^5.3.0",
+    "@yorkie-js/sdk": "^0.7.25",
     "three": "~0.180.0"
   },
   "devDependencies": {

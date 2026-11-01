@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { part } from '../world/items.js';
 import { addOutline } from './outline.js';
 import { sfx } from '../audio/sound.js';
+import { snapOf, applySnap, glide } from './puppet.js';
 
 // Crystal Golem, the mine boss (GDD §5 Stage 3): hitting it from the front
 // does nothing; dodge its slam and thrown rocks; after a slam it is dizzy for
@@ -47,6 +48,7 @@ export function createGolemModel() {
 }
 
 const HP = 3;
+const STATES = ['idle', 'chase', 'windup', 'slam', 'stunned', 'recover', 'throw', 'sleep'];
 
 export function createGolem(G, { x, y, z, arenaRadius = 13, onAsleep }) {
   const model = createGolemModel();
@@ -69,38 +71,44 @@ export function createGolem(G, { x, y, z, arenaRadius = 13, onAsleep }) {
     get active() { return e.state !== 'idle' && e.state !== 'sleep'; },
   };
   const set = (s) => { e.state = s; e.t = 0; };
-  e.start = () => { e.started = true; if (e.state === 'idle') set('chase'); };
+  const maxHp = () => Math.round(HP * G.toughness()); // more friends, a tougher boss
+  e.start = () => { e.started = true; if (e.state === 'idle') { e.hp = maxHp(); set('chase'); } };
   // after a faint the fight starts over at once (the arena trigger has fired)
   e.reset = () => {
     if (e.state === 'sleep') return;
-    mover.teleport(home); model.position.copy(home); e.hp = HP; set(e.started ? 'chase' : 'idle');
+    mover.teleport(home); model.position.copy(home); e.hp = maxHp(); set(e.started ? 'chase' : 'idle');
     for (const r of rocks) { G.scene.remove(r.mesh); G.scene.remove(r.shadow); } rocks.length = 0;
     ring.visible = false;
   };
 
-  function throwRock() {
-    const target = G.player.position.clone();
+  // a rock lobbed at a spot; only the host's rocks can hurt (the others are
+  // told where it lands: e.fx)
+  function throwRock(to, hurts = true) {
+    const target = to.clone();
     const mesh = part(new THREE.DodecahedronGeometry(0.45, 0), '#6f6680');
     mesh.position.copy(model.position).setY(model.position.y + 3.5);
     const shadow = new THREE.Mesh(new THREE.CircleGeometry(1.3, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.35 }));
     shadow.position.copy(target).setY(target.y + 0.05);
     G.scene.add(mesh, shadow);
-    rocks.push({ mesh, shadow, from: mesh.position.clone(), to: target, t: 0, dur: 1.3 });
+    rocks.push({ mesh, shadow, from: mesh.position.clone(), to: target, t: 0, dur: 1.3, hurts });
     sfx.whoosh();
+    if (hurts) G.coop?.fx(e, [target.x, target.y, target.z].map((n) => Math.round(n * 100) / 100));
   }
+  e.fx = ([x, y, z]) => throwRock(new THREE.Vector3(x, y, z), false);
 
   G.addHittable({
+    enemy: e,
     radius: 1.5, pos: () => model.position.clone().setY(model.position.y + 1.5), enabled: () => e.state !== 'sleep' && e.state !== 'idle',
-    onHit(point) {
+    onHit(point, _facing, from = G.player.position) {
       const facing = new THREE.Vector3(Math.sin(e.heading), 0, Math.cos(e.heading));
-      const toPlayer = G.player.position.clone().sub(model.position).setY(0).normalize();
+      const toPlayer = from.clone().sub(model.position).setY(0).normalize();
       const behind = facing.dot(toPlayer) < -0.2;
       if (e.state === 'stunned' && behind) {
         e.hp--;
         sfx.clink(); sfx.bonk();
         G.cam.shake(0.3);
         rig.weak.scale.setScalar(1.3);
-        G.toast(e.hp > 0 ? `쨍! 크리스털에 명중! (${HP - e.hp}/${HP})` : '골렘이 스르르 잠들어요…', 1500);
+        G.toast(e.hp > 0 ? `쨍! 크리스털에 명중! (${maxHp() - e.hp}/${maxHp()})` : '골렘이 스르르 잠들어요…', 1500);
         if (e.hp <= 0) {
           set('sleep');
           for (const r of rocks) G.scene.remove(r.mesh, r.shadow);
@@ -116,17 +124,14 @@ export function createGolem(G, { x, y, z, arenaRadius = 13, onAsleep }) {
   });
 
   const tmp = new THREE.Vector3();
+  const grounded = (t) => t.state.grounded && t.state.action?.name !== 'roll';
   e.update = (dt) => {
     e.t += dt;
-    const p = G.player.position;
+    const P = G.nearestTarget(model.position); // the nearest Yorkie, mine or a friend's
+    const p = P.position;
     const to = tmp.subVectors(p, model.position).setY(0);
     const dist = to.length();
     let speed = 0;
-    rig.stars.visible = e.state === 'stunned';
-    rig.stars.rotation.y += dt * 4;
-    rig.weak.scale.lerp(new THREE.Vector3(1, 1, 1), 1 - Math.exp(-6 * dt));
-    rig.weak.children.forEach((c) => { c.material.emissiveIntensity = e.state === 'stunned' ? 1.4 + Math.sin(e.t * 12) * 0.5 : 0.7; });
-    rig.arms.forEach((a) => { a.rotation.x = 0; });
 
     switch (e.state) {
       case 'chase':
@@ -137,52 +142,77 @@ export function createGolem(G, { x, y, z, arenaRadius = 13, onAsleep }) {
         else if (e.throwT <= 0 && dist > 6) { set('throw'); e.throwT = 5; }
         break;
       case 'windup':
-        rig.arms.forEach((a) => { a.rotation.x = -2.6 * Math.min(1, e.t / 0.9); });
-        ring.visible = true;
-        ring.position.copy(model.position).setY(model.position.y + 0.05);
-        ring.material.opacity = 0.3 + Math.sin(e.t * 20) * 0.3;
         if (e.t > 1.1) {
           set('slam');
-          sfx.stomp(); G.cam.shake(0.7);
-          ring.visible = false;
-          const pl = G.player;
-          if (dist < 3.6 && pl.state.grounded && pl.state.action?.name !== 'roll') G.hurtPlayer(model.position);
+          // the slam reaches every Yorkie close by that is on the ground
+          for (const t of G.targets()) if (t.position.distanceTo(model.position) < 3.6 && grounded(t)) G.hurtTarget(t, model.position);
         }
         break;
       case 'slam':
-        rig.arms.forEach((a) => { a.rotation.x = 0.3; });
-        if (e.t > 0.3) { set('stunned'); sfx.stun(); }
+        if (e.t > 0.3) set('stunned');
         break;
       case 'stunned':
-        rig.body.rotation.z = Math.sin(e.t * 5) * 0.08;
-        if (e.t > 3.6) { rig.body.rotation.z = 0; set('chase'); }
+        if (e.t > 3.6) set('chase');
         break;
       case 'recover':
         if (e.t > 1.2) set('chase');
         break;
       case 'throw':
         e.heading = Math.atan2(to.x, to.z);
-        rig.arms[1].rotation.x = -2.8 * Math.min(1, e.t / 0.7);
-        if (e.t > 0.8) { throwRock(); set('chase'); }
+        if (e.t > 0.8) { throwRock(p); set('chase'); }
         break;
-      case 'sleep': {
-        const k = Math.min(1, e.t / 1.5);
-        model.scale.setScalar(1 - k * 0.8);
-        mover.setEnabled(false);
-        break;
-      }
     }
-    if (speed > 0 && dist > 2.5) {
+    const walking = speed > 0 && dist > 2.5;
+    if (walking) {
       const d = to.normalize();
       mover.move(d.x * speed * dt, d.z * speed * dt, dt);
-      rig.body.position.y = Math.abs(Math.sin(e.t * 5)) * 0.12;
-      if (Math.floor(e.t * 2.5) !== Math.floor((e.t - dt) * 2.5)) sfx.stomp();
     } else if (e.state !== 'sleep') mover.move(0, 0, dt);
     if (e.state !== 'sleep') model.position.copy(mover.feet);
     model.rotation.y = THREE.MathUtils.lerp(model.rotation.y, e.heading, 1 - Math.exp(-5 * dt));
     // keep it in its arena
     if (model.position.distanceTo(home) > arenaRadius) { mover.teleport(home.clone().lerp(model.position, 0.9)); }
-    if (e.state === 'chase' && dist < 1.8) G.hurtPlayer(model.position);
+    if (e.state === 'chase' && dist < 1.8) G.hurtTarget(P, model.position);
+    look(dt, walking);
+  };
+
+  // what the golem looks like in each state, and its rocks in the air
+  let shown = null;
+  function look(dt, walking) {
+    const entered = shown !== e.state;
+    shown = e.state;
+    rig.stars.visible = e.state === 'stunned';
+    rig.stars.rotation.y += dt * 4;
+    rig.weak.scale.lerp(new THREE.Vector3(1, 1, 1), 1 - Math.exp(-6 * dt));
+    rig.weak.children.forEach((c) => { c.material.emissiveIntensity = e.state === 'stunned' ? 1.4 + Math.sin(e.t * 12) * 0.5 : 0.7; });
+    rig.arms.forEach((a) => { a.rotation.x = 0; });
+    ring.visible = e.state === 'windup';
+    if (e.state !== 'stunned') rig.body.rotation.z = 0;
+    switch (e.state) {
+      case 'windup':
+        rig.arms.forEach((a) => { a.rotation.x = -2.6 * Math.min(1, e.t / 0.9); });
+        ring.position.copy(model.position).setY(model.position.y + 0.05);
+        ring.material.opacity = 0.3 + Math.sin(e.t * 20) * 0.3;
+        break;
+      case 'slam':
+        if (entered) { sfx.stomp(); G.cam.shake(0.7); }
+        rig.arms.forEach((a) => { a.rotation.x = 0.3; });
+        break;
+      case 'stunned':
+        if (entered) sfx.stun();
+        rig.body.rotation.z = Math.sin(e.t * 5) * 0.08;
+        break;
+      case 'throw':
+        rig.arms[1].rotation.x = -2.8 * Math.min(1, e.t / 0.7);
+        break;
+      case 'sleep':
+        model.scale.setScalar(1 - Math.min(1, e.t / 1.5) * 0.8);
+        mover.setEnabled(false);
+        break;
+    }
+    if (walking) {
+      rig.body.position.y = Math.abs(Math.sin(e.t * 5)) * 0.12;
+      if (Math.floor(e.t * 2.5) !== Math.floor((e.t - dt) * 2.5)) sfx.stomp();
+    }
 
     for (const r of rocks) {
       r.t += dt;
@@ -193,12 +223,21 @@ export function createGolem(G, { x, y, z, arenaRadius = 13, onAsleep }) {
       r.shadow.material.opacity = 0.2 + k * 0.4;
       if (k >= 1) {
         sfx.stomp();
-        if (p.distanceTo(r.to) < 1.5 && G.player.state.action?.name !== 'roll') G.hurtPlayer(r.to);
+        if (r.hurts) for (const t of G.targets()) if (t.position.distanceTo(r.to) < 1.5 && t.state.action?.name !== 'roll') G.hurtTarget(t, r.to);
         G.scene.remove(r.mesh, r.shadow);
         r.done = true;
       }
     }
     for (let i = rocks.length - 1; i >= 0; i--) if (rocks[i].done) rocks.splice(i, 1);
+  }
+
+  // playing together: the host sends this, everyone else draws it
+  e.snap = () => snapOf(model, e.heading, STATES, e.state, e.hp);
+  e.apply = (snap) => { applySnap(e, STATES, snap); e.hp = snap[5] ?? e.hp; };
+  e.puppet = (dt) => {
+    e.t += dt;
+    const walking = e.state !== 'sleep' && glide(e, model, dt, 5) > 0.002;
+    look(dt, walking);
   };
   G.addEnemy(e);
   return e;

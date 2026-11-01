@@ -65,6 +65,7 @@ export function buildHarbor(G) {
   const repaired = () => G.flag('crystalFitted');
   const refreshBoat = () => { hull.visible = !repaired(); ship.visible = repaired(); };
   refreshBoat();
+  G.on('shared', ({ key }) => { if (key === 'crystalFitted') refreshBoat(); });
   G.onUpdate(() => { const bob = Math.sin(G.time * 0.9) * 0.08; hull.position.y = ship.position.y = -0.6 + bob; ship.rotation.z = Math.sin(G.time * 0.7) * 0.02; });
   const boatPos = along(DOCK_LEN - 3, 1.2);
   G.mark('boat', boatPos);
@@ -132,6 +133,8 @@ export function buildHarbor(G) {
   // a faint anywhere resets every monster: this one stays asleep unless the last chase is on
   const ghostReset = ghost.reset;
   ghost.reset = () => { ghostReset(); if (!warm) { ghost.state = 'sleep'; ghost.sleepFor = 1e9; } };
+  ghost.wakeUp = () => { ghost.sleepFor = 0; }; // the last chase is on
+  ghost.calm = () => { ghost.state = 'sleep'; ghost.sleepFor = 1e9; }; // and over
   for (const [x, z] of [[54, 72], [72, 62], [60, 56]]) createHideBush(G, x, z);
 
   async function startChase() {
@@ -144,30 +147,24 @@ export function buildHarbor(G) {
       { name: '???', text: '쿵! 쿵! 쿵! 쿵!' },
       { name: 'Yorkie', text: '으악, 괴물들이 몰려와! 도망치고, 숨고, 버텨야 해!' },
     ]);
-    for (const h of hunters) h.wake();
-    ghost.sleepFor = 0;
+    for (const h of hunters) G.toHost(h, 'wake');
+    G.toHost(ghost, 'wakeUp');
   }
   G.on('faint', () => {
     if (!warm) return;
     warm = null; G.musicOverride = null;
     ghost.state = 'sleep'; ghost.sleepFor = 1e9;
-  // a faint anywhere resets every monster: this one stays asleep unless the last chase is on
-  const ghostReset = ghost.reset;
-  ghost.reset = () => { ghostReset(); if (!warm) { ghost.state = 'sleep'; ghost.sleepFor = 1e9; } };
   });
   G.onUpdate((dt) => {
-    if (!warm || G.mode !== 'play') return;
+    if (!warm || !G.ticking()) return;
     warm.t -= dt;
     G.hud.prompt(`⏱️ 엔진 데우는 중… ${Math.ceil(warm.t)}초`);
     if (warm.t <= 0) {
       warm = null;
       G.musicOverride = null;
       G.setFlag('finalChase');
-      for (const h of hunters) h.reset();
-      ghost.state = 'sleep'; ghost.sleepFor = 1e9;
-  // a faint anywhere resets every monster: this one stays asleep unless the last chase is on
-  const ghostReset = ghost.reset;
-  ghost.reset = () => { ghostReset(); if (!warm) { ghost.state = 'sleep'; ghost.sleepFor = 1e9; } };
+      for (const h of hunters) G.toHost(h, 'reset');
+      G.toHost(ghost, 'calm');
       sfx.fanfare();
       G.toast('엔진 준비 완료! 배에 타요!', 3000);
     }

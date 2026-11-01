@@ -140,6 +140,17 @@ export function createYorkie() {
   return root;
 }
 
+// A hoodie in another colour (playing together, so friends tell their
+// Yorkies apart). Swaps the shared hoodie materials on this one model only.
+export function tintHoodie(root, hex) {
+  const C = YORKIE_COLORS;
+  if (hex === C.hoodie) return root;
+  const dark = '#' + new THREE.Color(hex).offsetHSL(0, 0, -0.12).getHexString();
+  const swap = { [mat(C.hoodie).uuid]: mat(hex), [mat(C.hoodieDark).uuid]: mat(dark) };
+  root.traverse((o) => { if (o.isMesh && swap[o.material.uuid]) o.material = swap[o.material.uuid]; });
+  return root;
+}
+
 // Procedural animation. `state` carries what the controller knows; `action`
 // is a one-shot ({ name, t, duration }) the player triggers.
 export function createYorkieAnimator(root) {

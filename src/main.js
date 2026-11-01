@@ -23,6 +23,10 @@ import { createPointer } from './systems/pointer.js';
 import { createNav } from './systems/nav.js';
 import { setupLabels } from './ui/labels.js';
 import { addSilhouette } from './entities/silhouette.js';
+import { createLobbyUI, ensureProfile } from './ui/lobby.js';
+import { joinGame } from './net/game.js';
+import { isGameId, sharedOf, gameStateFor } from './net/share.js';
+import { setupCoop } from './systems/coop.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -55,6 +59,21 @@ async function boot() {
 
   const saved = load();
   const state = saved ?? newState();
+
+  // playing together (Diablo II style): the lobby reloads the page on
+  // ?game=<id>, and the game is joined before the island is built, so the
+  // island is built the way the game has it (net/share.js gameStateFor)
+  const JOIN = 'scary-island-join';
+  const urlGame = new URLSearchParams(location.search).get('game');
+  const gameHere = isGameId(urlGame) ? urlGame : null;
+  let joinIntent = null;
+  try { joinIntent = JSON.parse(sessionStorage.getItem(JOIN)); sessionStorage.removeItem(JOIN); } catch { /* none */ }
+  const joining = gameHere && joinIntent ? joinGame({
+    id: gameHere, create: !!joinIntent.create, secret: !!joinIntent.secret,
+    profile: ensureProfile(state), stage: currentObjective(state)?.stage.id ?? 5, shared: sharedOf(state),
+  }) : null;
+  if (joining) $('loading-text').textContent = '친구들과 연결하는 중…';
+  joining?.catch(() => {}); // looked at below, once the models are in
   const hud = createHud();
   const input = createInput();
   const G = createGame({ scene, camera, renderer, look, physics, state, input, hud });
@@ -78,6 +97,19 @@ async function boot() {
   const screens = createScreens(G, { onRestart: startOver });
   G.clearStage = (id) => stageClearCard(G, id);
 
+  let net = null, own = null, joinError = null;
+  if (joining) {
+    try {
+      net = await joining;
+      own = structuredClone(state); // my own adventure, kept for my save
+      Object.assign(state, gameStateFor(own, net.shared(), newState()));
+    } catch (err) {
+      console.error(err);
+      joinError = { full: '게임이 꽉 찼어요 (10명). 다른 게임을 골라 봐요!', missing: '그 게임은 끝났거나 없어요. 코드를 확인해 주세요.', taken: '앗, 다시 한 번 눌러 주세요.' }[err.code]
+        ?? '섬 밖과 연결할 수 없어요. 인터넷을 확인해 주세요.';
+    }
+  }
+
   // spawn: the last checkpoint, else the beach
   const cp = state.checkpoint;
   const spawn = cp ? { x: cp.x, y: cp.y, z: cp.z, heading: Math.PI } : { ...BEACH_SPAWN, y: heightAt(BEACH_SPAWN.x, BEACH_SPAWN.z) };
@@ -95,6 +127,22 @@ async function boot() {
   decorateRidges(G);
   for (const build of REGION_BUILDERS) build(G, { openShop: screens.openShop, clearStage: G.clearStage });
   if (!state.checkpoint) G.checkpoint(new THREE.Vector3(spawn.x, spawn.y, spawn.z), 'beach');
+  const home = () => { location.href = location.pathname; };
+  if (net) {
+    G.coop = setupCoop(G, net, own, {
+      onEnd: async (reason) => {
+        save(state);
+        await hud.card(`<h2>${reason === 'full' ? '게임이 꽉 찼어요' : '게임이 끝났어요'}</h2><p>${reason === 'full' ? '다른 게임을 골라 봐요!' : '방장이 게임을 닫았어요. 다음에 또 같이 놀아요!'}</p>`, 3200);
+        home();
+      },
+    });
+    // like Diablo II's town: friends gather at the camp once the game has it
+    if (G.flag('campReached')) {
+      const at = G.markers.camp.clone().add(new THREE.Vector3(2.5, 0, 2.5));
+      G.player.teleport(at);
+      G.checkpoint(at, 'camp');
+    }
+  }
 
   G.nav = createNav(G);
   // silhouettes through scenery in the top-down view: Yorkie in sky blue, a
@@ -127,6 +175,29 @@ async function boot() {
   };
   $('btn-new').onclick = () => start(true);
   $('btn-continue').onclick = () => start(false);
+
+  const titleButtons = (on) => $('title-buttons').classList.toggle('hidden', !on);
+  const lobby = createLobbyUI(G, {
+    onEnter: (id, opts) => {
+      try { sessionStorage.setItem(JOIN, JSON.stringify(opts)); } catch { /* private mode: the link page asks again */ }
+      location.href = `${location.pathname}?game=${id}`;
+      return new Promise(() => {}); // the page is going away
+    },
+    onBack: () => { titleButtons(true); if (gameHere) history.replaceState(null, '', location.pathname); },
+  });
+  $('btn-coop').onclick = () => { initAudio(); resumeAudio(); titleButtons(false); lobby.open(); };
+  if (net) {
+    screens.onLeave = async () => { save(state); await net.leave(); home(); };
+    screens.onCloseGame = async () => { save(state); await net.close(); home(); };
+    titleButtons(false);
+    // straight in from the lobby; sound wakes with the first click
+    const wake = () => { resumeAudio(); removeEventListener('pointerdown', wake); removeEventListener('keydown', wake); };
+    addEventListener('pointerdown', wake); addEventListener('keydown', wake);
+    start(false);
+  } else if (gameHere) {
+    titleButtons(false);
+    lobby.open({ id: joinIntent?.create ? null : gameHere, text: joinError ?? '친구의 게임 코드예요. 들어가기를 눌러요!' });
+  }
   let autostart = false;
   try { autostart = sessionStorage.getItem(AUTOSTART) === '1'; sessionStorage.removeItem(AUTOSTART); } catch { /* ignore */ }
   if (autostart && !saved) {
@@ -143,7 +214,7 @@ async function boot() {
   look.setTime(dayTime);
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.1);
-    if (G.mode === 'play' || G.mode === 'dialog' || G.mode === 'cutscene') {
+    if (G.running()) {
       physics.step(dt, (step) => { if (G.mode === 'play') G.player.fixedUpdate(G.pointer.moveInput(input.move), G.cam.yaw, step); });
       physics.recoverDynamics(-3);
       G.player.update(dt);
@@ -151,6 +222,7 @@ async function boot() {
       G.pointer.update(dt);
       state.playTime += dt;
     }
+    G.coop?.update(dt);
     sea.userData.tick(G.time);
     if (G.mode === 'title') titleOrbit(camera, clock.elapsedTime);
     else G.cam.update(G.player.position, dt, G.player.body);
@@ -177,7 +249,7 @@ async function boot() {
       const target = obj?.step.at ? G.markers[obj.step.at] : null;
       const underground = G.underground?.() ?? false;
       hud.minimap({ player: p, heading: G.player.state.heading, target, region: regionAt(p.x, p.z), underground, rotation: G.cam.yaw,
-        enemies: G.enemies.filter((e) => e.active).map((e) => e.pos) });
+        enemies: G.enemies.filter((e) => e.active).map((e) => e.pos), friends: G.friends?.dots() ?? [] });
       const chasing = G.enemies.some((e) => e.active && e.chasing !== false && e.pos.distanceTo(p) < 14);
       // each region has its own light; drift toward it
       const want = G.timeOverride ?? (underground ? REGION_TIME.mine : REGION_TIME[regionAt(p.x, p.z)]) ?? 0.3;

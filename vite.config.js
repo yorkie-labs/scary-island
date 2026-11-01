@@ -11,6 +11,10 @@ const selfHost = process.env.VITE_SELF_HOST_MODELS === '1';
 
 export default defineConfig({
   base: './', // works at any path: a domain root or GitHub Pages /scary-island/
+  // the Yorkie SDK is imported only when someone plays together; listing it
+  // here pre-bundles it at startup, so the first 같이 하기 does not trigger a
+  // re-optimise that leaves the open page with a 504 "Outdated Optimize Dep"
+  optimizeDeps: { include: ['@yorkie-js/sdk'] },
   build: {
     target: 'es2022',
     chunkSizeWarningLimit: 5000, // Rapier's WASM is inlined (~4 MB)

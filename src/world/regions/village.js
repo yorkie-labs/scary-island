@@ -6,6 +6,7 @@ import { scatterIn } from '../scatter.js';
 import { createTreat, createPotion, createSnack, createChest, createHideBush, createItemPickup, groundPos } from '../interactables.js';
 import { createWatcher, isObserved } from '../../entities/watcher.js';
 import { sfx } from '../../audio/sound.js';
+import { snapOf, applySnap, glide } from '../../entities/puppet.js';
 
 // STAGE 4 — STATUE VILLAGE (GDD §5). Show the energy crystal to the old
 // door, learn how the statues move, freeze them with the flashlight (found in the forest),
@@ -125,6 +126,7 @@ function buildVillageDoor(G) {
   };
   if (G.flag('villageDoorOpen')) open(true);
   else body = G.physics.addCuboid(g.x, y + 2.8, g.z, 0.3, 2.8, 2.7, 0);
+  G.on('shared', ({ key }) => { if (key === 'villageDoorOpen') open(false); }); // a friend's crystal
   const pos = new THREE.Vector3(g.x - 1.6, y, g.z);
   G.mark('villageDoor', pos);
   G.addInteractable({
@@ -184,6 +186,7 @@ function buildGuardianArena(G, { clearStage }) {
   };
   if (G.flag('ancientGateOpen')) openGate(true);
   else gateBody = G.physics.addCuboid(gx, ay + 2, gz, 1.8, 2, 0.3);
+  G.on('shared', ({ key }) => { if (key === 'ancientGateOpen') openGate(false); }); // a friend's keys
   const gatePos = new THREE.Vector3(gx, ay, gz + 1.8);
   G.mark('ancientGate', gatePos);
   G.addInteractable({
@@ -277,7 +280,7 @@ function buildGuardianArena(G, { clearStage }) {
     G.hud.prompt(`장치 켜는 중… ${Math.min(100, Math.round((charging.t / 1.5) * 100))}%`);
     if (charging.t >= 1.5) {
       charging.d.turnOn(false);
-      G.state.devices = devices.filter((x) => x.on).length;
+      G.state.devices = S.devicesLit.length; // mine and my friends'
       charging = null;
       G.refresh();
       if (G.state.devices >= 3) finish();
@@ -301,6 +304,19 @@ function buildGuardianArena(G, { clearStage }) {
   if (G.flag('sealReleased')) spawnShipKey();
   // after a reload in the middle of the guardian fight, it is awake again
   if (G.flag('guardianMet') && !G.flag('sealReleased')) guardian.wake();
+
+  // a friend's progress at the arena
+  G.on('shared', ({ field, key }) => {
+    if (field === 'devicesLit') devices[Number(key)]?.turnOn(false);
+    if (key === 'guardianMet' && !G.flag('sealReleased')) guardian.wake();
+    if (key === 'sealReleased') {
+      finished = true;
+      guardian.sleep();
+      seal.visible = false;
+      for (const d of devices) if (!d.on) d.turnOn(true);
+      spawnShipKey();
+    }
+  });
 
   let finished = false;
   async function finish() {
@@ -352,25 +368,40 @@ function createGuardian(G, { x, z, y }) {
     e.t += dt;
     e.frozenFor = Math.max(0, e.frozenFor - dt);
     if (e.state !== 'awake') { mover.move(0, 0, dt); return; }
-    const p = G.player.position;
-    const to = tmp.subVectors(p, obj.position).setY(0);
+    const P = G.nearestTarget(obj.position); // the nearest Yorkie, mine or a friend's
+    const to = tmp.subVectors(P.position, obj.position).setY(0);
     const dist = to.length();
-    const seen = isObserved(G, obj.position, 5);
-    const speed = e.frozenFor > 0 ? 0 : seen ? 0.7 : 2.4;
-    eyes.visible = true;
-    eyes.children.forEach((c) => c.material.color.set(e.frozenFor > 0 ? '#ffe066' : seen ? '#7dfcff' : '#ff6b9a'));
+    e.seen = isObserved(G, obj.position, 5); // any Yorkie looking slows it
+    const speed = e.frozenFor > 0 ? 0 : e.seen ? 0.7 : 2.4;
     if (speed > 0 && dist > 2) {
       to.normalize();
       mover.move(to.x * speed * dt, to.z * speed * dt, dt);
       e.heading = Math.atan2(to.x, to.z);
-      if (Math.floor(e.t * (seen ? 0.8 : 1.6)) !== Math.floor((e.t - dt) * (seen ? 0.8 : 1.6))) { sfx.stomp(); G.cam.shake(0.15); }
     } else mover.move(0, 0, dt);
     obj.position.copy(mover.feet);
     obj.rotation.y = THREE.MathUtils.lerp(obj.rotation.y, e.heading, 1 - Math.exp(-3 * dt));
-    obj.rotation.z = speed > 1 ? Math.sin(e.t * 10) * 0.04 : 0;
-    if (dist < 2.2) G.hurtPlayer(obj.position);
+    look(dt, speed > 0 && dist > 2 ? speed : 0);
+    if (dist < 2.2) G.hurtTarget(P, obj.position);
   };
-  G.addHittable({ radius: 1.2, pos: () => obj.position.clone().setY(obj.position.y + 1), onHit() { sfx.ting(); G.toast('팅! 너무 커요. 크리스털 장치를 켜요!', 1500); } });
+  function look(dt, speed) {
+    eyes.visible = e.state === 'awake';
+    if (!eyes.visible) return;
+    eyes.children.forEach((c) => c.material.color.set(e.frozenFor > 0 ? '#ffe066' : e.seen ? '#7dfcff' : '#ff6b9a'));
+    obj.rotation.z = speed > 1 ? Math.sin(e.t * 10) * 0.04 : 0;
+    const steps = e.seen ? 0.8 : 1.6;
+    if (speed > 0 && Math.floor(e.t * steps) !== Math.floor((e.t - dt) * steps)) { sfx.stomp(); G.cam.shake(0.15); }
+  }
+  // playing together: the host sends this, everyone else draws it
+  const STATES = ['idle', 'awake', 'asleep'];
+  e.snap = () => snapOf(obj, e.heading, STATES, e.state, e.seen ? 1 : 0, Math.round(e.frozenFor * 10) / 10);
+  e.apply = (snap) => { applySnap(e, STATES, snap); e.seen = !!snap[5]; e.frozenFor = snap[6] ?? 0; };
+  e.puppet = (dt) => {
+    e.t += dt;
+    e.frozenFor = Math.max(0, e.frozenFor - dt);
+    const moved = glide(e, obj, dt, 3);
+    look(dt, dt > 0 ? moved / dt : 0);
+  };
+  G.addHittable({ enemy: e, radius: 1.2, pos: () => obj.position.clone().setY(obj.position.y + 1), onHit() { sfx.ting(); G.toast('팅! 너무 커요. 크리스털 장치를 켜요!', 1500); } });
   G.addEnemy(e);
   return e;
 }

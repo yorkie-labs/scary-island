@@ -86,7 +86,7 @@ export function buildBeach(G) {
     // the rocks stir: three thumps, then they get up
     for (let i = 0; i < 3; i++) setTimeout(() => sfx.stomp(), i * 350);
     setTimeout(async () => {
-      for (const r of rockies) r.wake();
+      for (const r of rockies) G.toHost(r, 'wake');
       G.cam?.shake?.(0.4);
       await G.say([
         { name: 'Yorkie', text: '쿵! 쿵! 쿵!… 어, 저 돌들이 움직여?!' },
@@ -119,7 +119,7 @@ export function buildBeach(G) {
     for (let r = 0; r < 3; r++) {
       const row = new THREE.Group();
       for (const [x, z, ry] of [[0, 0.56, 0], [0, -0.56, 0], [0.56, 0, Math.PI / 2], [-0.56, 0, Math.PI / 2]]) {
-        row.add(items.part(new THREE.BoxGeometry(1.1, 0.22, 0.05), wood[(r + Math.round(x + z)) % 3], { x, y: 0.22 + r * 0.33, z, ry }));
+        row.add(items.part(new THREE.BoxGeometry(1.1, 0.22, 0.05), wood[(r + Math.round(x + z) + 3) % 3], { x, y: 0.22 + r * 0.33, z, ry }));
       }
       crate.add(row);
       rows.push(row);
@@ -138,6 +138,11 @@ export function buildBeach(G) {
         f.mesh.rotation.x += f.spin * dt;
         if (f.t > 1.2) { f.mesh.visible = false; }
       }
+    });
+    // a friend got the engine first: the crate is gone here too
+    G.on('shared', ({ field, key }) => {
+      if (field !== 'taken' || key !== 'engine' || left <= 0) return;
+      left = 0; crate.visible = false; G.physics.remove(crateBody);
     });
     G.addHittable({
       radius: 0.85, pos: () => groundPos(ex, ez, 0.5), enabled: () => left > 0,
@@ -242,6 +247,8 @@ function buildStoneDoor(G) {
 
   if (G.flag('doorOpen')) open(true);
   else slabBody = G.physics.addCuboid(g.x, y + 2.35, g.z, 2.5, 2.35, 0.35);
+
+  G.on('shared', ({ key }) => { if (key === 'doorOpen') open(true); }); // a friend opened it
 
   G.addInteractable({
     pos, radius: 3, enabled: () => !G.flag('doorOpen'),

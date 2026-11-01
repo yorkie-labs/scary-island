@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { part } from '../world/items.js';
 import { heightAt } from '../world/map.js';
 import { sfx } from '../audio/sound.js';
+import { snapOf, applySnap, glide } from './puppet.js';
 
 // Mushy, the mushroom ghost (GDD §6): floats about, puffs spore clouds at
 // Yorkie, and the hammer goes right through it. Only a wind fan blows it away.
@@ -32,6 +33,7 @@ export function createMushyModel() {
 }
 
 const PUFF_SPEED = 3.6;
+const STATES = ['float', 'blown', 'sleep'];
 
 export function createMushy(G, { x, z, id, range = 10 }) {
   const model = createMushyModel();
@@ -59,51 +61,68 @@ export function createMushy(G, { x, z, id, range = 10 }) {
   };
   e.reset = () => { e.state = 'float'; model.position.copy(home); e.sleepFor = 0; for (const p of puffs) p.life = 0; };
 
-  function shoot() {
+  // a puff at the nearest Yorkie; on the host it can hurt, elsewhere it is
+  // only drawn (the host tells everyone where it flew: e.fx)
+  function shoot(target) {
     const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(0.35, 1), new THREE.MeshStandardMaterial({ color: '#c79cff', transparent: true, opacity: 0.75, emissive: '#9c6bff', emissiveIntensity: 0.4, flatShading: true }));
     puff.position.copy(model.position).setY(model.position.y + 1);
-    const dir = G.player.position.clone().setY(G.player.position.y + 0.5).sub(puff.position).normalize();
+    const dir = target.position.clone().setY(target.position.y + 0.5).sub(puff.position).normalize();
     G.scene.add(puff);
-    puffs.push({ mesh: puff, dir, life: 3.2 });
+    puffs.push({ mesh: puff, dir, life: 3.2, target });
     sfx.puff();
+    G.coop?.fx(e, [dir.x, dir.y, dir.z].map((n) => Math.round(n * 1000) / 1000));
   }
+  e.fx = ([x, y, z]) => {
+    const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(0.35, 1), new THREE.MeshStandardMaterial({ color: '#c79cff', transparent: true, opacity: 0.75, emissive: '#9c6bff', emissiveIntensity: 0.4, flatShading: true }));
+    puff.position.copy(model.position).setY(model.position.y + 1);
+    G.scene.add(puff);
+    puffs.push({ mesh: puff, dir: new THREE.Vector3(x, y, z), life: 3.2, target: null });
+    sfx.puff();
+  };
 
   G.addHittable({
+    enemy: e,
     radius: 0.6, pos: () => model.position.clone().setY(model.position.y + 0.9), enabled: () => e.state === 'float',
     onHit() { sfx.ghost(); G.toast('휙! 망치가 그냥 통과해요… 바람 장치를 써 보세요', 1800); },
   });
 
   e.update = (dt) => {
     e.t += dt;
-    const p = G.player.position;
+    const P = G.nearestTarget(model.position);
+    const p = P.position;
     const toP = new THREE.Vector3().subVectors(p, model.position).setY(0);
     const dist = toP.length();
-    const { ghost, zzz } = model.userData.rig;
+    const { ghost } = model.userData.rig;
 
     if (e.state === 'float') {
-      ghost.position.y = Math.sin(e.t * 2) * 0.15 + 0.2;
       if (dist < range) {
         model.rotation.y = Math.atan2(toP.x, toP.z);
         // drift toward Yorkie, but stay near home
         const fromHome = model.position.distanceTo(home);
         if (dist > 3 && fromHome < 7) model.position.addScaledVector(toP.normalize(), 0.9 * dt);
         e.cooldown -= dt;
-        if (e.cooldown <= 0) { shoot(); e.cooldown = 2.6; }
+        if (e.cooldown <= 0) { shoot(P); e.cooldown = 2.6; }
       } else {
         model.position.lerp(home, 1 - Math.exp(-0.5 * dt));
       }
       model.position.y = heightAt(model.position.x, model.position.z);
-      if (dist < 1.0) G.hurtPlayer(model.position);
+      if (dist < 1.0) G.hurtTarget(P, model.position);
     } else if (e.state === 'blown') {
       model.position.addScaledVector(e.blowDir, 9 * dt);
       model.position.y = heightAt(model.position.x, model.position.z) + e.t * 2;
-      ghost.rotation.z += dt * 10;
       if (e.t > 1.4) { e.state = 'sleep'; e.sleepFor = 25; model.position.copy(home); ghost.rotation.z = 0; }
     } else if (e.state === 'sleep') {
       e.sleepFor -= dt;
-      ghost.position.y = 0.05;
       if (e.sleepFor <= 0) e.state = 'float';
     }
+    look(dt);
+  };
+
+  function look(dt) {
+    const { ghost, zzz } = model.userData.rig;
+    if (e.state === 'float') ghost.position.y = Math.sin(e.t * 2) * 0.15 + 0.2;
+    else if (e.state === 'blown') ghost.rotation.z += dt * 10;
+    else { ghost.position.y = 0.05; ghost.rotation.z = 0; }
     zzz.visible = e.state === 'sleep';
     zzz.position.y = 1.9 + Math.sin(e.t * 2) * 0.1;
     light.intensity = e.state === 'sleep' ? 1 : 3;
@@ -114,11 +133,17 @@ export function createMushy(G, { x, z, id, range = 10 }) {
       puff.mesh.position.addScaledVector(puff.dir, PUFF_SPEED * dt);
       puff.mesh.scale.setScalar(1 + (3.2 - puff.life) * 0.25);
       puff.mesh.material.opacity = Math.min(0.75, puff.life);
-      if (puff.mesh.position.distanceTo(p.clone().setY(p.y + 0.5)) < 0.7) { G.hurtPlayer(puff.mesh.position); puff.life = 0; }
+      const tp = puff.target?.position;
+      if (tp && puff.mesh.position.distanceTo(tp.clone().setY(tp.y + 0.5)) < 0.7) { G.hurtTarget(puff.target, puff.mesh.position); puff.life = 0; }
       if (puff.life <= 0) G.scene.remove(puff.mesh);
     }
     for (let i = puffs.length - 1; i >= 0; i--) if (puffs[i].life <= 0) { G.scene.remove(puffs[i].mesh); puffs.splice(i, 1); }
-  };
+  }
+
+  // playing together: the host sends this, everyone else draws it
+  e.snap = () => snapOf(model, model.rotation.y, STATES, e.state);
+  e.apply = (snap) => { const was = e.state; applySnap(e, STATES, snap); if (e.state === 'blown' && was !== 'blown') for (const p of puffs) p.life = 0; };
+  e.puppet = (dt) => { e.t += dt; glide(e, model, dt); look(dt); };
 
   G.addEnemy(e);
   return e;
@@ -163,7 +188,7 @@ export function createFan(G, { x, z, ry = 0 }) {
       if (e.kind !== 'mushy') continue;
       const to = e.pos.clone().sub(g.position).setY(0);
       const d = to.length();
-      if (d < 12 && to.normalize().dot(forward) > 0.6) e.blow(forward);
+      if (e.state === 'float' && d < 12 && to.normalize().dot(forward) > 0.6) G.toHost(e, 'blow', forward);
     }
   });
   return g;

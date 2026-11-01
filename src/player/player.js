@@ -12,7 +12,7 @@ const HEIGHT = 1.0;
 const SKIN = 0.04;
 const INVULNERABLE_AFTER_HIT = 1.6;
 
-const ACTIONS = {
+export const ACTIONS = {
   swing: { duration: 0.45, cooldown: 0.1 },
   roll: { duration: 0.5, cooldown: 0.25 },
   bark: { duration: 0.6, cooldown: 0.8 },
@@ -70,7 +70,7 @@ export function createPlayer(G, spawn) {
   }
 
   function hurt(from, amount = 1) {
-    if (s.invulnerable > 0 || G.mode !== 'play') return false;
+    if (s.invulnerable > 0 || !G.ticking()) return false;
     s.invulnerable = INVULNERABLE_AFTER_HIT;
     const away = new THREE.Vector2(model.position.x - from.x, model.position.z - from.z);
     if (away.lengthSq() < 1e-4) away.set(0, 1);

@@ -2,6 +2,10 @@ import * as THREE from 'three';
 import { instance } from '../world/models.js';
 import { heightAt, regionAt, inGateGap } from '../world/map.js';
 import { sfx } from '../audio/sound.js';
+import { snapOf, applySnap, glide } from './puppet.js';
+
+const STATES = ['idle', 'hunt', 'asleep'];
+const r1 = (n) => Math.round(n * 10) / 10;
 
 // Watcher, the statue that moves only when nobody is looking (GDD §6):
 // "바라보면 멈추고 뒤돌아보면 이동". Keep it on screen to hold it still; the
@@ -10,23 +14,24 @@ import { sfx } from '../audio/sound.js';
 // Line of sight looks through invisible colliders (the ridge walls).
 const visible = (G) => (c) => !G.invisibleColliders?.has(c.handle);
 
-// Is the statue being looked at? (Yorkie faces it, nothing solid in between)
-export const isObserved = (G, pos, height = 2) => isFaced(G, pos, height);
+// Is the statue being looked at? By any Yorkie: playing together, a friend
+// keeping an eye on it holds it still for everyone.
+export const isObserved = (G, pos, height = 2) => G.targets().some((t) => isFaced(G, pos, height, t));
 
-// Top-down view: the statue is "looked at" when it is in front of Yorkie
-// (within ~55° of where Yorkie faces) and nothing solid is in between.
-export function isFaced(G, pos, height = 2) {
-  const pp = G.player.position;
+// Top-down view: the statue is "looked at" when it is in front of a Yorkie
+// (within ~55° of where it faces) and nothing solid is in between.
+export function isFaced(G, pos, height = 2, viewer = G.player) {
+  const pp = viewer.position;
   const to = new THREE.Vector3(pos.x - pp.x, 0, pos.z - pp.z);
   const dist = to.length();
   if (dist > 24) return false;
-  if (dist > 0.5 && to.normalize().dot(G.player.facing) < Math.cos(0.96)) return false;
+  if (dist > 0.5 && to.normalize().dot(viewer.facing) < Math.cos(0.96)) return false;
   const eye = pp.clone().setY(pp.y + 0.7);
   const mid = pos.clone().setY(pos.y + height * 0.5);
   const dir = mid.clone().sub(eye);
   const len = dir.length();
   const { RAPIER, world } = G.physics;
-  const hit = world.castRay(new RAPIER.Ray(eye, dir.normalize()), Math.max(0, len - 1.0), true, undefined, undefined, undefined, G.player.body, visible(G));
+  const hit = world.castRay(new RAPIER.Ray(eye, dir.normalize()), Math.max(0, len - 1.0), true, undefined, undefined, undefined, viewer.body ?? G.player.body, visible(G));
   return !hit;
 }
 
@@ -74,7 +79,8 @@ export function createWatcher(G, { x, z, ry = 0, model = 'knightStatue', speed =
     e.t += dt;
     if (e.state === 'asleep') { mover.move(0, 0, dt); return; }
     e.frozenFor = Math.max(0, e.frozenFor - dt);
-    const p = G.player.position;
+    const P = G.nearestTarget(obj.position);
+    const p = P.position;
     const dist = tmp.subVectors(p, obj.position).setY(0).length();
     e.observed = isObserved(G, obj.position, height);
 
@@ -87,10 +93,10 @@ export function createWatcher(G, { x, z, ry = 0, model = 'knightStatue', speed =
       // too far: slip back home while nobody looks
       if (!e.observed) e.reset();
     }
-    if (e.state === 'hunt' && e.observed && dist < wake) G.emit('watcherObserved', e);
+    noticed(dist);
 
     let moving = false;
-    if (e.state === 'hunt' && !e.observed && e.frozenFor <= 0 && G.player.state.hidden === false) {
+    if (e.state === 'hunt' && !e.observed && e.frozenFor <= 0 && P.state.hidden === false) {
       const dir = tmp.normalize();
       const nx = obj.position.x + dir.x * speed * dt, nz = obj.position.z + dir.z * speed * dt;
       if (regionAt(nx, nz) === e.homeRegion && !inGateGap(nx, nz)) mover.move(dir.x * speed * dt, dir.z * speed * dt, dt);
@@ -104,19 +110,40 @@ export function createWatcher(G, { x, z, ry = 0, model = 'knightStatue', speed =
     }
     obj.position.copy(mover.feet);
     obj.rotation.y = e.heading;
-    obj.rotation.z = moving ? Math.sin(e.t * 18) * 0.05 : 0;
-    eyes.visible = moving || e.frozenFor > 0;
-    eyes.children.forEach((c) => c.material.color.set(e.frozenFor > 0 ? '#ffe066' : '#7dfcff'));
+    e.moving = moving;
+    look();
 
     if (e.state === 'hunt' && dist < 1.1) {
-      G.hurtPlayer(obj.position);
+      G.hurtTarget(P, obj.position);
       // after a bump it shuffles back home, so it never pins a child down
       e.reset();
       e.state = 'hunt';
     }
   };
 
+  // the first time *I* catch one moving: Yorkie's line about it (forest.js)
+  function noticed(dist) {
+    if (e.state === 'hunt' && dist < wake && isFaced(G, obj.position, height)) G.emit('watcherObserved', e);
+  }
+  function look() {
+    obj.rotation.z = e.moving ? Math.sin(e.t * 18) * 0.05 : 0;
+    eyes.visible = e.moving || e.frozenFor > 0;
+    eyes.children.forEach((c) => c.material.color.set(e.frozenFor > 0 ? '#ffe066' : '#7dfcff'));
+  }
+
+  // playing together: the host sends this, everyone else draws it
+  e.snap = () => snapOf(obj, e.heading, STATES, e.state, e.moving ? 1 : 0, r1(e.frozenFor));
+  e.apply = (snap) => { applySnap(e, STATES, snap); e.moving = !!snap[5]; e.frozenFor = snap[6] ?? 0; };
+  e.puppet = (dt) => {
+    e.t += dt;
+    e.frozenFor = Math.max(0, e.frozenFor - dt);
+    glide(e, obj, dt, 20);
+    noticed(obj.position.distanceTo(G.player.position));
+    look();
+  };
+
   G.addHittable({
+    enemy: e,
     radius: 0.6, pos: () => obj.position.clone().setY(obj.position.y + 1),
     onHit() { sfx.ting(); G.toast('팅! 돌이라 망치가 안 통해요. 계속 바라보세요!', 1600); },
   });

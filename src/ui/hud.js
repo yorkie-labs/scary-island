@@ -182,7 +182,7 @@ export function createHud() {
       else if (H > W) c.fillText('🗺️ 지도 닫기 · ⭐ 다음 목표 · 🔒 닫힌 길 · 🔥 체크포인트', W / 2, 152);
     },
 
-    minimap({ player, heading, target, region, underground, enemies = [], rotation = 0 }) {
+    minimap({ player, heading, target, region, underground, enemies = [], friends = [], rotation = 0 }) {
       const cv = $('minimap'), c = cv.getContext('2d');
       const S = 180;
       c.clearRect(0, 0, S, S);
@@ -206,6 +206,10 @@ export function createHud() {
         for (const e of enemies) {
           const [ex, ez] = toMap(e.x, e.z);
           if (Math.hypot(ex - S / 2, ez - S / 2) < S / 2) { c.fillStyle = '#ff4d6d'; c.beginPath(); c.arc(ex, ez, 3, 0, 7); c.fill(); }
+        }
+        for (const f of friends) {
+          const [fx, fz] = toMap(f.x, f.z);
+          if (Math.hypot(fx - S / 2, fz - S / 2) < S / 2) { c.fillStyle = f.color; c.strokeStyle = '#fff'; c.lineWidth = 1.5; c.beginPath(); c.arc(fx, fz, 4, 0, 7); c.fill(); c.stroke(); }
         }
         if (target) {
           let [tx, tz] = toMap(target.x, target.z);

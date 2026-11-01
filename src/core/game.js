@@ -10,6 +10,7 @@ import { SEA_LEVEL } from '../world/map.js';
 // builders fill the registries; the main loop calls G.update.
 export function createGame({ scene, camera, renderer, look, physics, state, input, hud }) {
   const listeners = new Map();
+  let wasSimulating = true;
   let sayQueue = Promise.resolve();
   const G = {
     scene, camera, renderer, look, physics, state, input, hud,
@@ -59,7 +60,42 @@ export function createGame({ scene, camera, renderer, look, physics, state, inpu
       G.lightSources.push(src);
       return src;
     },
-    addEnemy(e) { G.enemies.push(e); return e; },
+    addEnemy(e) { e.index = G.enemies.length; G.enemies.push(e); return e; },
+
+    // --- monsters, alone or together. Who they go after: my Yorkie and (playing
+    // together) my friends' Yorkies, which have the same shape (systems/coop.js).
+    targets() { return G.coop ? [G.player, ...G.coop.targets()] : [G.player]; },
+    nearestTarget(pos) {
+      let best = G.player, bd = Infinity;
+      for (const t of G.targets()) {
+        const d = t.position.distanceToSquared(pos);
+        if (d < bd) { best = t; bd = d; }
+      }
+      return best;
+    },
+    hurtTarget(t, from, amount = 1, opts) {
+      if (t === G.player) G.hurtPlayer(from, amount, opts);
+      else G.coop?.hurtFriend(t, from, amount);
+    },
+    // Playing together the island never pauses (like Diablo II): the menu and
+    // the shop leave the world running, and a monster can still reach you.
+    // Alone, they pause it. Dialogues and cutscenes run the world either way.
+    running() { return G.mode === 'play' || G.mode === 'dialog' || G.mode === 'cutscene' || (G.mode === 'menu' && !!G.coop); },
+    // my own clocks (a chase timer, a collapse): in play, or in a menu that doesn't pause
+    ticking() { return G.mode === 'play' || (G.mode === 'menu' && !!G.coop); },
+    // Only one client runs the monsters (the host); the others draw them.
+    simulating() { return !G.coop || G.coop.hosting(); },
+    // Something done to a monster here (a wake-up, a freeze, a gust): shown at
+    // once, and done for real by the host.
+    toHost(e, method, ...args) {
+      e[method](...args);
+      if (!G.simulating()) G.coop.forward(e, method, args);
+    },
+    // Monsters get tougher with more friends around (Diablo II's /players).
+    toughness() { return 1 + 0.2 * (G.coop?.targets().length ?? 0); },
+    // A friend's hit, run on the host: no toasts meant for the hitter.
+    quiet: 0,
+    quietly(fn) { G.quiet++; try { fn(); } finally { G.quiet--; } },
     onUpdate(fn) { G.updaters.push(fn); },
 
     // A floating collectible. `id` makes it remember being taken.
@@ -71,6 +107,17 @@ export function createGame({ scene, camera, renderer, look, physics, state, inpu
       look.shadows(model);
       G.pickups.push(p);
       return p;
+    },
+
+    // A friend took it first: it vanishes here without being collected.
+    removePickup(id) {
+      for (const p of G.pickups) {
+        if (p.id !== id || !p.alive) continue;
+        p.alive = false;
+        scene.remove(p.model);
+        if (p.marker) scene.remove(p.marker);
+        p.onRemove?.();
+      }
     },
 
     inHideSpot(pos) {
@@ -88,13 +135,14 @@ export function createGame({ scene, camera, renderer, look, physics, state, inpu
         if (d < 0.75 && dy < 2.5 && d < bd) { best = h; bd = d; }
       }
       G.emit('noise', { pos: point.clone(), radius: 9, kind: 'hammer' });
-      if (best) best.onHit(point, G.player.facing.clone());
+      if (best?.enemy && !G.simulating()) G.coop.forwardHit(best.enemy, point);
+      if (best) best.onHit(point, G.player.facing.clone(), G.player.position);
       else sfx.bonk();
       return best;
     },
 
     hurtPlayer(from, amount = 1, { beam = false } = {}) {
-      if (G.mode !== 'play') return;
+      if (!G.ticking()) return;
       // in the mine cart only the beams can bump Yorkie (monsters can't reach)
       if (G.riding?.() && !beam) return;
       G.player.hurt(from, amount);
@@ -111,7 +159,7 @@ export function createGame({ scene, camera, renderer, look, physics, state, inpu
       sayQueue = sayQueue.then(run, run);
       return sayQueue;
     },
-    toast(text, ms) { hud.toast(text, ms); },
+    toast(text, ms) { if (!G.quiet) hud.toast(text, ms); },
 
     // One place decides the mode after anything ends (a dialogue, a menu, a
     // cutscene): an open dialogue wins, then a running cutscene, then a menu,
@@ -228,7 +276,13 @@ export function createGame({ scene, camera, renderer, look, physics, state, inpu
       G.nearInteractable = near;
       if (!G.riding?.()) hud.prompt(near ? `${G.touch ? '✋' : 'Space'} ${typeof near.label === 'function' ? near.label() : near.label}` : null);
 
-      if (G.mode === 'play') for (const e of G.enemies) e.update(dt);
+      // monsters: the host runs them (and keeps them running through its own
+      // dialogues when friends are around); everyone else draws the host's
+      const sim = G.simulating();
+      if (sim && !wasSimulating) for (const e of G.enemies) e.mover?.teleport(e.pos); // taking over as host
+      wasSimulating = sim;
+      if (!sim) for (const e of G.enemies) e.puppet(dt);
+      else if (G.mode === 'play' || G.coop) for (const e of G.enemies) e.update(dt);
       updateLightPool(dt);
       for (const fn of G.updaters) fn(dt);
     },
@@ -248,13 +302,15 @@ export function createGame({ scene, camera, renderer, look, physics, state, inpu
     },
 
     async faint() {
+      if (G.screens?.menuOpen) G.screens.closeMenu(); // fainted with the menu open (playing together)
       G.beginCutscene();
       G.emit('faint');
       await hud.fade(true);
       const c = state.checkpoint;
       heal(state, 99);
       if (c) G.player.teleport(c, Math.PI);
-      for (const e of G.enemies) e.reset?.();
+      // alone, the island starts over around me; with friends it goes on
+      if (!G.coop?.targets().length) for (const e of G.enemies) e.reset?.();
       G.refresh();
       await hud.fade(false);
       G.endCutscene();

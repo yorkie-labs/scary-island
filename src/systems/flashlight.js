@@ -44,7 +44,7 @@ export function setupFlashlight(G) {
     let frozen = 0;
     for (const e of G.enemies) {
       if (!e.freeze) continue;
-      if (inBeam(origin, facing, e.pos)) { e.freeze(seconds); frozen++; G.emit('frozenByLight', e); }
+      if (inBeam(origin, facing, e.pos)) { G.toHost(e, 'freeze', seconds); frozen++; G.emit('frozenByLight', e); }
     }
     if (frozen) G.toast(`반짝! 동상이 ${seconds}초 동안 멈췄어요`, 1500);
   });

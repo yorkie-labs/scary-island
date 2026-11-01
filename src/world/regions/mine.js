@@ -135,7 +135,7 @@ export function buildMine(G, { clearStage }) {
         { name: '도움말', text: `크리스털 골렘이에요! 앞에서는 망치가 안 통해요. 쿵 하고 내려찍은 뒤 잠깐 어지러워할 때, 등 뒤로 돌아가 분홍 크리스털을 세 번 쳐요! (${G.hint('roll')})` },
       ]);
       G.cam.release();
-      golem.start();
+      G.toHost(golem, 'start');
     },
   });
   const spawnCrystal = () => {
@@ -153,6 +153,8 @@ export function buildMine(G, { clearStage }) {
     });
   };
   if (G.flag('golemAsleep')) spawnCrystal();
+  // a friend put the golem to sleep: it shrinks here too, and the crystal appears
+  G.on('shared', ({ key }) => { if (key === 'golemAsleep' && golem.state !== 'sleep') { golem.state = 'sleep'; golem.t = 0; spawnCrystal(); } });
 
   // exit elevator in the arena
   const exit = C(6, -85);
@@ -227,7 +229,7 @@ function buildCollapse(G) {
     }
     for (let i = falling.length - 1; i >= 0; i--) if (falling[i].done) falling.splice(i, 1);
     if (active && (G.player.position.z > start.z + 3 || G.player.position.x < 400)) { active = false; G.musicOverride = null; } // turned back
-    if (!active || G.mode !== 'play') return;
+    if (!active || !G.ticking()) return;
     timer -= dt;
     if (timer > 0) return;
     timer = 0.6;
@@ -280,12 +282,17 @@ function buildCartChase(G) {
   const gate = items.part(new THREE.BoxGeometry(4.2, 5, 0.3), '#5b5f66', { x: 600, y: 7.5, z: RAIL_END + 3 }, { metalness: 0.5 });
   G.scene.add(gate);
   let gateBody = null;
-  if (G.flag('cartDone')) { gate.position.y = 2.5; gateBody = G.physics.addCuboid(600, 2.5, RAIL_END + 3, 2.1, 2.5, 0.2); }
+  const dropGate = () => { if (!gateBody) { gate.position.y = 2.5; gateBody = G.physics.addCuboid(600, 2.5, RAIL_END + 3, 2.1, 2.5, 0.2); } };
+  if (G.flag('cartDone')) dropGate();
+  G.on('shared', ({ key }) => { if (key === 'cartDone') dropGate(); }); // a friend rode through
+  // still on the station side of the gate (a friend rode first, or I came in
+  // later): the cart keeps working, so nobody is shut out of the arena
+  const behind = () => G.player.position.x > 400 && G.player.position.z > RAIL_END + 3;
 
   G.addTrigger({
     pos: station, radius: 6, enabled: () => G.flag('collapseEscaped') && !G.flag('cartDone'),
     onEnter: async () => {
-      for (const r of rockies) r.wake();
+      for (const r of rockies) G.toHost(r, 'wake');
       G.cam.shake(0.4);
       await G.say([{ name: 'Yorkie', text: '여기에도 돌 괴물이?! 저 광산 카트에 올라타자!' }, { name: '도움말', text: G.hint('cart') }]);
     },
@@ -293,7 +300,7 @@ function buildCartChase(G) {
 
   let ride = null;
   G.addInteractable({
-    pos: () => cart.position, radius: 2.4, label: '광산 카트 타기!', enabled: () => !ride && G.flag('collapseEscaped') && !G.flag('cartDone'),
+    pos: () => cart.position, radius: 2.4, label: '광산 카트 타기!', enabled: () => !ride && G.flag('collapseEscaped') && (!G.flag('cartDone') || behind()),
     action: () => {
       ride = { z: RAIL_START, y: 0, vy: 0, hits: new Set(), speed: 0 };
       G.player.state.frozen = true;
@@ -311,7 +318,7 @@ function buildCartChase(G) {
   G.rideHeight = () => (ride ? ride.y : 0);
 
   G.onUpdate((dt) => {
-    if (!ride || G.mode !== 'play') return;
+    if (!ride || !G.ticking()) return;
     ride.speed = Math.min(CART_SPEED, ride.speed + dt * 5);
     ride.z -= ride.speed * dt;
     ride.vy -= CART_GRAVITY * dt;
@@ -346,8 +353,7 @@ function buildCartChase(G) {
       G.player.state.frozen = false;
       G.player.teleport({ x: 600, y: 0, z: RAIL_END - 2.5 }, Math.PI);
       G.musicOverride = null;
-      gate.position.y = 2.5;
-      gateBody = G.physics.addCuboid(600, 2.5, RAIL_END + 3, 2.1, 2.5, 0.2);
+      dropGate();
       sfx.stomp(); G.cam.shake(0.4);
       for (const r of rockies) r.reset();
       G.setFlag('cartDone');

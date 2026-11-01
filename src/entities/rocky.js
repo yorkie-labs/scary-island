@@ -3,6 +3,7 @@ import { part } from '../world/items.js';
 import { addOutline } from './outline.js';
 import { sfx } from '../audio/sound.js';
 import { heightAt, regionAt, inGateGap } from '../world/map.js';
+import { snapOf, applySnap, glide } from './puppet.js';
 
 // Rocky, the pebble monster (GDD §6): hides as an ordinary rock, wakes with
 // a rumble, hops after Yorkie, gives up when Yorkie hides or runs far enough,
@@ -50,6 +51,7 @@ export function createRockyModel(scale = 1) {
 }
 
 const SPEED = { chase: 2.9, search: 2.0, return: 1.6, lure: 2.4 };
+const STATES = ['sleep', 'waking', 'chase', 'lure', 'return', 'stunned'];
 const SEE = 12; // how far a waking Rocky can see Yorkie
 const GIVE_UP = 17;
 
@@ -76,9 +78,11 @@ export function createRocky(G, { x, z, y, ry = 0, scale = 1, id = 'rocky', wakeR
   };
 
   function setState(s) { e.state = s; e.t = 0; }
+  const fullHp = () => Math.round(2 * G.toughness()); // more friends, tougher rocks
 
   function wake() {
     if (e.state !== 'sleep') return;
+    e.hp = fullHp();
     setState('waking');
     sfx.rumble();
     G.emit('rockyWake', e);
@@ -100,6 +104,7 @@ export function createRocky(G, { x, z, y, ry = 0, scale = 1, id = 'rocky', wakeR
   });
 
   G.addHittable({
+    enemy: e,
     radius: 0.6 * scale,
     pos: () => model.position.clone().setY(model.position.y + 0.5),
     onHit() {
@@ -121,22 +126,23 @@ export function createRocky(G, { x, z, y, ry = 0, scale = 1, id = 'rocky', wakeR
   e.reset = () => {
     mover.teleport(home);
     model.position.copy(home);
-    e.hp = 2;
+    e.hp = fullHp();
     setState('sleep');
   };
 
   const tmp = new THREE.Vector3();
   e.update = (dt) => {
     e.t += dt;
-    const p = G.player.position;
+    const P = G.nearestTarget(model.position); // the nearest Yorkie, mine or a friend's
+    const p = P.position;
     const toPlayer = tmp.subVectors(p, model.position).setY(0);
     const dist = toPlayer.length();
-    const sees = (hunter || dist < SEE) && (!G.player.state.hidden || dist < 1.4);
+    const sees = (hunter || dist < SEE) && (!P.state.hidden || dist < 1.4);
     let speed = 0, goal = null;
 
     switch (e.state) {
       case 'sleep':
-        if (dist < wakeRadius * scale && G.player.state.speed > 3) wake();
+        if (dist < wakeRadius * scale && P.state.speed > 3) wake();
         break;
       case 'waking':
         if (e.t > 1.0) { setState('chase'); G.setFlag('rockyWoke'); }
@@ -154,10 +160,10 @@ export function createRocky(G, { x, z, y, ry = 0, scale = 1, id = 'rocky', wakeR
       case 'return':
         goal = home; speed = SPEED.return;
         if (sees && dist < 6 && e.t > 1.5) setState('chase');
-        if (Math.hypot(model.position.x - home.x, model.position.z - home.z) < 0.6) { e.hp = 2; setState('sleep'); }
+        if (Math.hypot(model.position.x - home.x, model.position.z - home.z) < 0.6) { e.hp = fullHp(); setState('sleep'); }
         break;
       case 'stunned':
-        if (e.t > 6) { e.hp = 2; setState('return'); }
+        if (e.t > 6) { e.hp = fullHp(); setState('return'); }
         break;
     }
 
@@ -178,9 +184,16 @@ export function createRocky(G, { x, z, y, ry = 0, scale = 1, id = 'rocky', wakeR
     model.rotation.y = THREE.MathUtils.lerp(model.rotation.y, e.heading, 1 - Math.exp(-8 * dt));
 
     // contact damage while awake and not dizzy
-    if ((e.state === 'chase' || e.state === 'lure') && dist < 0.85 * scale + 0.25) G.hurtPlayer(model.position);
+    if ((e.state === 'chase' || e.state === 'lure') && dist < 0.85 * scale + 0.25) G.hurtTarget(P, model.position);
+    look(dt, speed > 0 && (dx || dz));
+  };
 
-    // looks
+  // playing together: the host sends this, everyone else draws it
+  e.snap = () => snapOf(model, e.heading, STATES, e.state, e.hp);
+  e.apply = (snap) => { applySnap(e, STATES, snap); e.hp = snap[5] ?? e.hp; };
+  e.puppet = (dt) => { e.t += dt; look(dt, glide(e, model, dt) > 0.002); };
+
+  function look(dt, walking) {
     const awake = e.state !== 'sleep';
     rig.lids.visible = !awake || e.state === 'waking' && e.t < 0.5;
     rig.eyes.visible = awake;
@@ -191,12 +204,12 @@ export function createRocky(G, { x, z, y, ry = 0, scale = 1, id = 'rocky', wakeR
     if (e.state === 'waking') {
       rig.bodyG.position.x = Math.sin(e.t * 60) * 0.04;
       rig.bodyG.position.y = Math.min(0.12, e.t * 0.3);
-    } else if (speed > 0 && (dx || dz)) {
+    } else if (walking) {
       rig.bodyG.position.y = Math.abs(Math.sin(e.t * 9)) * 0.18;
       rig.bodyG.position.x = 0;
     } else rig.bodyG.position.x = 0;
     rig.bodyG.rotation.z = e.state === 'stunned' ? Math.sin(e.t * 6) * 0.15 : 0;
-  };
+  }
 
   G.addEnemy(e);
   return e;

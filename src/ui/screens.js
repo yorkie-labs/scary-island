@@ -31,6 +31,7 @@ export function createScreens(G, { onRestart }) {
       }).join('');
       $('menu-controls').innerHTML = G.touch ? TOUCH_CONTROLS_HTML : CONTROLS_HTML;
       $('btn-mute').textContent = isMuted() ? '소리 켜기' : '소리 끄기';
+      renderCoop();
       $('menu').classList.remove('hidden');
     },
     closeMenu() {
@@ -73,6 +74,37 @@ export function createScreens(G, { onRestart }) {
       };
     });
   }
+
+  // playing together: the game's code, who is here, leave or (owner) close
+  function renderCoop() {
+    const net = G.net;
+    $('menu-title').textContent = net ? '메뉴 (게임은 계속돼요!)' : '잠깐 쉬어요';
+    $('menu-coop').classList.toggle('hidden', !net);
+    $('btn-restart').classList.toggle('hidden', !!net); // no wiping the character mid-game
+    if (!net) return;
+    const label = document.createElement('b');
+    label.textContent = net.secret ? '🔒 코드' : '코드';
+    $('menu-coop-code').replaceChildren(label, ...net.code.map((e) => Object.assign(document.createElement('span'), { textContent: e })));
+    $('menu-coop-players').replaceChildren(...net.players().map((p) => {
+      const tag = document.createElement('span');
+      tag.textContent = `${p.id === net.owner ? '👑 ' : ''}${p.name}${p.me ? ' (나)' : ''}`;
+      tag.style.setProperty('--hoodie', p.color);
+      return tag;
+    }));
+    $('btn-close-game').classList.toggle('hidden', !net.isOwner);
+  }
+  $('btn-copy-link').onclick = () => {
+    const url = `${location.origin}${location.pathname}?game=${G.net.id}`;
+    navigator.clipboard?.writeText(url).then(() => G.toast('링크를 복사했어요! 친구에게 보내 주세요'), () => G.toast(url, 6000));
+  };
+  $('btn-leave').onclick = () => screens.onLeave?.();
+  let closeArmed = -Infinity;
+  $('btn-close-game').onclick = () => {
+    if (performance.now() - closeArmed < 3000) { screens.onCloseGame?.(); return; }
+    closeArmed = performance.now();
+    $('btn-close-game').textContent = '정말요? 모두 게임에서 나가요!';
+    setTimeout(() => { $('btn-close-game').textContent = '게임 닫기'; }, 3000);
+  };
 
   $('btn-resume').onclick = () => { screens.closeMenu(); screens.onResume?.(); };
   $('btn-shop-close').onclick = () => { screens.closeShop(); screens.onResume?.(); };

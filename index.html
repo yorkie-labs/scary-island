@@ -93,12 +93,39 @@
       <div id="title-buttons">
         <button id="btn-continue" class="hidden">이어하기</button>
         <button id="btn-new">새로 시작</button>
+        <button id="btn-coop">👥 같이 하기</button>
       </div>
       <p id="loading-text">섬을 불러오는 중…</p>
     </div>
 
+    <div id="coop" class="screen hidden">
+      <h2>👥 같이 하기</h2>
+      <div id="coop-me">
+        <span id="coop-name"></span><button id="coop-reroll" title="다른 이름">🎲</button>
+        <div id="coop-colors"></div>
+      </div>
+      <div id="coop-list"></div>
+      <div class="row">
+        <button id="coop-create">새 게임 만들기</button>
+        <button id="coop-create-secret">🔒 비밀 게임 만들기</button>
+        <button id="coop-code-open">코드로 들어가기</button>
+      </div>
+      <div id="coop-pad" class="hidden">
+        <div id="coop-slots"></div>
+        <div id="coop-keys"></div>
+        <div class="row"><button id="coop-back-key">⌫ 지우기</button><button id="coop-join-code">들어가기</button></div>
+      </div>
+      <p id="coop-msg"></p>
+      <button id="coop-back">뒤로</button>
+    </div>
+
     <div id="menu" class="screen hidden">
-      <h2>잠깐 쉬어요</h2>
+      <h2 id="menu-title">잠깐 쉬어요</h2>
+      <div id="menu-coop" class="hidden">
+        <div id="menu-coop-code"></div>
+        <div id="menu-coop-players"></div>
+        <div class="row"><button id="btn-copy-link">링크 복사</button><button id="btn-leave">게임 나가기</button><button id="btn-close-game" class="hidden">게임 닫기</button></div>
+      </div>
       <div id="menu-stars"></div>
       <div id="menu-controls"></div>
       <div class="row">

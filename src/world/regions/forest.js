@@ -102,6 +102,7 @@ export function buildForest(G, { clearStage }) {
     await G.say([{ name: 'Yorkie', text: '휴~ 무사히 지나왔어! 동상들도 이제 움직이지 않네.' }]);
   } });
   if (G.flag('pastWatchers')) for (const w of watchers) w.sleep(); // a save from after the walk
+  G.on('shared', ({ key }) => { if (key === 'pastWatchers') for (const w of watchers) w.sleep(); }); // a friend got through
 
   // --- mushroom ghosts by the hut, and the fans that beat them
   createMushy(G, { x: -66, z: -20, id: 'm1' });
@@ -186,6 +187,7 @@ function buildVines(G) {
   };
   if (G.flag('vinesCut')) cut(true);
   else body = G.physics.addCuboid(g.x, y + 2, g.z, 0.4, 2.5, 3.4);
+  G.on('shared', ({ key }) => { if (key === 'vinesCut') cut(false); }); // a friend's scissors
 
   const tryCut = async () => {
     if (G.flag('vinesCut')) return;
@@ -216,6 +218,7 @@ function buildGeneratorAndMineDoor(G, { clearStage }) {
   }
   const powerOn = () => { for (const l of lamps) { if (l.material) l.material.emissiveIntensity = 1.2; else l.on = true; } };
   if (G.flag('generatorFixed')) powerOn();
+  G.on('shared', ({ key }) => { if (key === 'generatorFixed') powerOn(); if (key === 'mineDoorOpen') open(false); });
   G.addInteractable({
     pos: genPos, radius: 2.4, enabled: () => !G.flag('generatorFixed'),
     label: () => (G.state.parts.generatorPart ? '발전기 고치기' : '고장 난 발전기 (부품이 필요해요)'),

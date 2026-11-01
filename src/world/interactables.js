@@ -148,6 +148,7 @@ export function createItemPickup(G, { id, model, x, z, y, onCollect, float = 0.5
     onCollect: (pk) => { G.scene.remove(mk); onCollect(pk); },
   });
   if (p) {
+    p.onRemove = () => G.scene.remove(mk);
     G.scene.add(mk);
     G.onUpdate(() => { if (p.alive) { mk.position.copy(p.model.position).setY(p.model.position.y + 0.8); mk.rotation.y += 0.05; } });
   }
