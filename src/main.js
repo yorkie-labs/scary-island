@@ -213,6 +213,7 @@ function bindKeys(G, screens) {
   input.on('Tab', () => { if (playing() || G.mode === 'dialog') { G.showMap = !G.showMap; sfx.click(); } });
   // the touch buttons' extras (no right click and no Esc on a phone)
   input.on('Light', () => { if (playing()) useLight(G); });
+  input.on('Hammer', () => { if (playing()) G.pointer.hammer(); });
   // 1 sniff, 2 roll, 3 jump, 4 potion (like a Diablo hotbar)
   input.on('Digit1', () => { if (playing()) G.player.act('sniff'); });
   input.on('Digit2', () => { if (playing()) G.emit('rollTowardCursor'); });

@@ -98,8 +98,12 @@ export function createIsoCamera(G) {
     }
     if (camera.fov !== ISO_FOV) { camera.fov = ISO_FOV; camera.updateProjectionMatrix(); }
     const underground = G.underground?.() ?? false;
-    // an upright phone is narrow: back off a little so the sides are not cut close
-    const narrow = camera.aspect < 1 ? Math.min(1.5, 1 / Math.sqrt(camera.aspect)) : 1;
+    // phones: the lens backs off by 1/sqrt(aspect), which gives an upright and
+    // a lying-down phone the same scale (the screen spans the same metres, just
+    // turned); an upright window or tablet backs off a little too. Desktop
+    // (landscape, mouse) keeps the tuned distance.
+    const a = camera.aspect;
+    const narrow = a < 1 ? Math.min(1.5, 1 / Math.sqrt(a)) : G.touch ? Math.max(0.6, 1 / Math.sqrt(a)) : 1;
     const dist = (underground ? Math.min(rig.distance, 17) : rig.distance) * narrow;
     focus.lerp(new THREE.Vector3(target.x, target.y + 0.6, target.z), 1 - Math.exp(-10 * dt));
     if (focus.distanceTo(target) > 30) focus.set(target.x, target.y + 0.6, target.z); // after a teleport

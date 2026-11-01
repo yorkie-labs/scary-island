@@ -10,7 +10,7 @@ export const CONTROLS_HTML = `
   <kbd>Space</kbd> 가까운 것 사용 · 대화 넘기기 · <kbd>B</kbd> 짖기 · 구르기·점프는 강아지 간식을 먹으면 배워요<br>
   <kbd>Tab</kbd> 섬 지도 · 휠 확대 · <kbd>Esc</kbd> 메뉴`;
 export const TOUCH_CONTROLS_HTML = `
-  <kbd>땅을 톡</kbd> 걸어가기 · <kbd>조이스틱</kbd> 움직이기 · 몬스터/광석을 톡: 망치<br>
+  <kbd>땅을 톡</kbd> 걸어가기 · <kbd>조이스틱</kbd> 움직이기 · 🔨 망치(가까운 광석·몬스터 쪽으로)<br>
   👃 냄새(이름표) · 🌀 구르기 · ⤴ 점프 · 🔦 손전등 · 🧪 포션<br>
   ✋ 가까운 것 사용 · 🗺️ 섬 지도 · ☰ 메뉴 · 대화는 화면을 톡<br>
   구르기·점프는 강아지 간식을 먹으면 배워요`;

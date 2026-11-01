@@ -204,6 +204,22 @@ export function createPointer(G) {
     G.player.act('swing');
   }
 
+  // the touch hammer button: bonk right here, turned toward the nearest thing
+  // that can be bonked (a rock, a monster, planks) so small thumbs need no aim
+  function hammerButton() {
+    order = null;
+    const pp = G.player.position;
+    let best = null, bd = 2.6;
+    for (const h of G.hittables) {
+      if (h.enabled && !h.enabled()) continue;
+      const hp = typeof h.pos === 'function' ? h.pos() : h.pos;
+      const d = Math.hypot(hp.x - pp.x, hp.z - pp.z) - h.radius;
+      if (d < bd && Math.abs(hp.y - pp.y) < 2.5) { best = hp; bd = d; }
+    }
+    if (best) faceToward(best);
+    swing();
+  }
+
   function rightClick() {
     const p = cursorPoint();
     faceToward(p);
@@ -348,5 +364,5 @@ export function createPointer(G) {
   function goTo(point, exact = true) { order = { type: 'move', point: point.clone(), exact }; plan(order); showMarker(point); }
   function useIt(it) { order = { type: 'use', it }; plan(order); }
 
-  return { goTo, useIt, moveInput, update, cancel: () => { order = null; held = false; }, get order() { return order; }, pick, cursorPoint };
+  return { goTo, useIt, moveInput, update, hammer: hammerButton, cancel: () => { order = null; held = false; }, get order() { return order; }, pick, cursorPoint };
 }
