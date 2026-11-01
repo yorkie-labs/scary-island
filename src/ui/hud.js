@@ -104,7 +104,8 @@ export function createHud() {
         if (badge) b.dataset.badge = badge; else delete b.dataset.badge;
       }
       const max = maxPotions(state);
-      $('belt').innerHTML = Array.from({ length: max }, (_, i) => `<div class="slot ${i < state.potions ? '' : 'empty'}" data-key="Digit4" title="하트 포션 (4)">${i === 0 ? '<small>4</small>' : ''}${icon('potion', '🧪')}</div>`).join('');
+      // one slot with the count, not a slot per potion
+      $('belt').innerHTML = `<div class="slot ${state.potions ? '' : 'empty'}" data-key="Digit4" title="하트 포션 ${state.potions}/${max} (4)"><small>4</small>${icon('potion', '🧪')}<b>${state.potions}</b></div>`;
       // key items you just carry (the scissors open the vines by themselves)
       const keyItems = state.items.scissors ? `<span class="have" title="가위 (덩굴 앞에서 저절로 써요)">${icon('scissors', '✂️')}</span>` : '';
       $('parts').innerHTML = keyItems + Object.entries(PART_ICONS).map(([k, emoji]) => `<span class="${state.parts[k] ? 'have' : ''}" title="${PART_NAMES[k]}">${icon(k, emoji)}</span>`).join('');

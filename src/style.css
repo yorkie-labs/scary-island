@@ -132,6 +132,35 @@ kbd { display: inline-block; min-width: 22px; padding: 0 6px; border-radius: 6px
 .shop-item h3 { margin: 0; font-size: 22px; }
 .shop-item p { margin: 0; opacity: 0.85; }
 .shop-item.owned { opacity: 0.55; }
+/* phones: the stage card fits the screen (it was 64 px type, near half of a phone lying down) */
+body.touch #card { max-width: 86vw; padding: 14px 22px; }
+body.touch #card h2 { font-size: clamp(24px, min(7vw, 9vh), 44px); letter-spacing: 1px; }
+body.touch #card p { font-size: clamp(14px, min(4vw, 4.5vh), 20px); }
+body.touch #card .stars { font-size: clamp(26px, min(8vw, 10vh), 44px); }
+body.touch #card p[style] { font-size: clamp(12px, min(3.4vw, 4vh), 16px) !important; }
+
+/* phones: the shop fits without scrolling (compact cards; 5 across lying down, 2 upright) */
+@media (pointer: coarse) and (max-height: 500px) {
+  #shop { gap: 6px; padding: 8px; }
+  #shop #shop-items { grid-template-columns: repeat(5, 1fr); width: 96vw; gap: 6px; }
+  #shop .shop-item { padding: 6px 6px 8px; gap: 2px; align-items: center; text-align: center; }
+  #shop .shop-item .shop-ico { width: 40px; height: 40px; }
+  #shop .shop-item h3 { font-size: 15px; }
+  #shop .shop-item p { font-size: 11px; line-height: 1.3; }
+  #shop .shop-item button { font-size: 14px; padding: 4px 10px; }
+  #shop h2 { font-size: 22px; }
+  #polly-say { font-size: 15px; padding: 8px 14px; }
+  #polly-choices button, #btn-shop-close { font-size: 15px; padding: 6px 14px; }
+}
+@media (pointer: coarse) and (orientation: portrait) {
+  #shop #shop-items { grid-template-columns: repeat(2, 1fr); width: 94vw; gap: 8px; }
+  #shop .shop-item { padding: 8px 8px 10px; gap: 2px; align-items: center; text-align: center; }
+  #shop .shop-item .shop-ico { width: 48px; height: 48px; }
+  #shop .shop-item h3 { font-size: 16px; }
+  #shop .shop-item p { font-size: 12px; line-height: 1.3; }
+  #shop .shop-item button { font-size: 15px; padding: 6px 12px; }
+}
+
 /* Polly's talk: her words in a bubble, the questions as buttons */
 #polly-say { width: min(620px, 92vw); background: var(--ink); color: var(--panel-solid); border-radius: 20px; padding: 14px 20px; text-align: left; font-size: 18px; line-height: 1.55; box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25); }
 #polly-say p { margin: 4px 0; }
@@ -226,6 +255,7 @@ body[data-cursor="use"] canvas { cursor: pointer; }
 #bar .slot { width: 44px; height: 44px; font-size: 22px; border-radius: 9px; background: rgba(255,255,255,.06); }
 #belt .slot { border-color: rgba(255,93,143,.35); }
 #belt .slot.empty { opacity: .3; }
+#belt .slot b { font-size: 15px; color: #fff; text-shadow: 0 1px 2px #000; } /* how many potions */
 @media (max-width: 640px) {
   .orb { width: 56px; height: 56px; } .orb .glyph { font-size: 18px; }
   .skill { width: 40px; height: 40px; font-size: 20px; } #bar .slot { width: 34px; height: 34px; font-size: 17px; }
