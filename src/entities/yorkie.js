@@ -175,13 +175,14 @@ export function createYorkie() {
     head.add(mesh(new THREE.IcosahedronGeometry(r, 0), color, { x, y, z, sx, sy, sz, rx, ry, rz }));
   // the fur mass: the back of the head, darker
   // (the game looks from above and behind: golden on top, dark only lower down)
-  clump(0, -0.02, -0.08, 0.21, C.furDark, { sx: 1.15, sy: 0.95, sz: 0.85, rz: 0.3 });
-  clump(0, 0.11, -0.03, 0.235, C.fur, { sx: 1.08, sy: 0.92, sz: 0.95, rx: 0.4 });
+  clump(0, -0.02, -0.08, 0.2, C.furDark, { sx: 1.0, sy: 0.92, sz: 0.85, rz: 0.3 });
+  clump(0, 0.11, -0.03, 0.225, C.fur, { sx: 1.02, sy: 0.9, sz: 0.95, rx: 0.4 });
   for (const side of [-1, 1]) {
-    // the cheeks: darker fur fanning out at the sides and falling past the jaw
-    clump(side * 0.21, -0.02, -0.02, 0.15, C.furDark, { sx: 0.8, sz: 1.1, rz: side * 0.6, ry: side * 0.4 });
-    clump(side * 0.19, -0.13, 0.03, 0.12, C.furDark, { sx: 0.85, sy: 1.2, rz: side * 0.9 });
-    clump(side * 0.15, -0.17, 0.12, 0.09, C.fur, { rz: side * 0.5 });
+    // the cheeks: a little darker fur at the sides, falling past the jaw (kept
+    // close to the face: bigger clumps made a mane)
+    clump(side * 0.2, -0.02, -0.03, 0.11, C.furDark, { sx: 0.75, sz: 1.0, rz: side * 0.6, ry: side * 0.4 });
+    clump(side * 0.17, -0.12, 0.02, 0.085, C.furDark, { sx: 0.8, sy: 1.15, rz: side * 0.9 });
+    clump(side * 0.13, -0.16, 0.12, 0.065, C.fur, { rz: side * 0.5 });
     // a little V of fur over each eye (the brave look)
     head.add(mesh(new THREE.BoxGeometry(0.075, 0.018, 0.02), '#c98a3e', { x: side * 0.1, y: 0.115, z: 0.225, rz: side * 0.35 }));
   }
