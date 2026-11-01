@@ -146,7 +146,7 @@ export function buildHarbor(G) {
       { name: 'Yorkie', text: '부르릉… 시동이 걸렸어! 엔진이 데워질 때까지 조금만 기다리면 돼.' },
       { name: '???', text: '쿵! 쿵! 쿵! 쿵!' },
       { name: 'Yorkie', text: '으악, 괴물들이 몰려와! 도망치고, 숨고, 버텨야 해!' },
-    ]);
+    ], { stop: true });
     for (const h of hunters) G.toHost(h, 'wake');
     G.toHost(ghost, 'wakeUp');
   }

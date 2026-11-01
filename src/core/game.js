@@ -12,6 +12,7 @@ export function createGame({ scene, camera, renderer, look, physics, state, inpu
   const listeners = new Map();
   let wasSimulating = true;
   let sayQueue = Promise.resolve();
+  let stops = 0; // big moments waiting their turn
   const G = {
     scene, camera, renderer, look, physics, state, input, hud,
     mode: 'title',
@@ -148,14 +149,26 @@ export function createGame({ scene, camera, renderer, look, physics, state, inpu
       G.player.hurt(from, amount);
     },
 
-    // Dialogues queue up: one that starts while another is open waits its
-    // turn instead of replacing it (and leaving the first one hanging).
-    say(lines) {
-      const run = () => new Promise((resolve) => {
-        G.mode = 'dialog';
-        input.enabled = false;
-        hud.dialog(lines, () => { G.settle(); resolve(); });
-      });
+    // Talk (Diablo III style): by default lines are said while Yorkie keeps
+    // playing (hud.speech). Only the big moments (intro, a boss appearing,
+    // the seal, the last chase, the ending) pass { stop: true }, which holds
+    // the game in the dialogue box until read. Either way it all queues up in
+    // order, and a big moment cuts any chatter before it short.
+    say(lines, { stop = false } = {}) {
+      if (stop) { stops++; hud.hush(true); }
+      const run = stop
+        ? () => new Promise((resolve) => {
+          if (--stops === 0) hud.hush(false);
+          G.mode = 'dialog';
+          input.enabled = false;
+          hud.dialog(lines, () => {
+            G.settle();
+            const help = lines.findLast?.((l) => l?.name === '도움말');
+            if (help) hud.tip(help.text); // the boss's how-to stays on screen
+            resolve();
+          });
+        })
+        : () => hud.speech(lines);
       sayQueue = sayQueue.then(run, run);
       return sayQueue;
     },

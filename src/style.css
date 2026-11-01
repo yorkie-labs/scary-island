@@ -53,6 +53,28 @@ button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.
 }
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* talk while playing (Diablo III): a small panel above the bar that moves on
+   by itself (the thin line runs out), and a tip card for help lines */
+#speech {
+  position: fixed; left: 50%; bottom: 165px; transform: translateX(-50%); width: max-content; max-width: min(560px, 86vw); z-index: 5;
+  background: rgba(34, 24, 56, 0.86); color: var(--ink); border-radius: 18px; padding: 10px 18px 12px; font-size: 18px; line-height: 1.45;
+  pointer-events: auto; cursor: pointer; overflow: hidden;
+}
+#speech.pop { animation: speechIn 0.25s ease-out; }
+@keyframes speechIn { from { opacity: 0; transform: translate(-50%, 8px); } }
+#speech-name { font-size: 13px; color: #fff; background: var(--accent); padding: 1px 10px; border-radius: 999px; margin-right: 8px; vertical-align: 2px; }
+#speech-name:empty { display: none; }
+#speech-time { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--accent); transform-origin: left; opacity: 0.8; }
+#tip {
+  position: fixed; left: 16px; top: 44px; width: min(320px, 40vw); z-index: 5; pointer-events: auto;
+  background: rgba(255, 248, 236, 0.95); color: var(--panel-solid); border-radius: 16px; padding: 10px 34px 12px 14px;
+  font-size: 15px; line-height: 1.45; box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+}
+#tip.pop { animation: speechIn 0.25s ease-out; }
+#tip b { display: block; font-size: 13px; color: var(--accent); margin-bottom: 2px; }
+#tip-close { position: absolute; right: 6px; top: 6px; width: 26px; height: 26px; padding: 0; font-size: 13px; box-shadow: none; background: transparent; }
+body.touch #speech { font-size: 16px; }
+body.touch #tip { top: 12px; left: 12px; width: min(300px, 42vw); font-size: 14px; }
 #dialog {
   position: fixed; left: 50%; bottom: 110px; transform: translateX(-50%); width: min(720px, 92vw); z-index: 6;
   background: rgba(255, 248, 236, 0.97); color: #2b1f45; border-radius: 22px; padding: 18px 24px 26px;

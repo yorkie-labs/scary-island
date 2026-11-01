@@ -120,8 +120,8 @@ export function buildMine(G, { clearStage }) {
   const golem = createGolem(G, { x: arena.x, y: 0, z: arena.z, onAsleep: async () => {
     G.setFlag('golemAsleep');
     await new Promise((r) => setTimeout(r, 1200));
-    await G.say([{ name: 'Yorkie', text: '골렘이 작은 돌멩이가 되어서 쿨쿨 자고 있어… 저기 빛나는 건 뭐지?' }]);
-    spawnCrystal();
+    spawnCrystal(); // first, so the line points at something (talk doesn't stop the game)
+    G.say([{ name: 'Yorkie', text: '골렘이 작은 돌멩이가 되어서 쿨쿨 자고 있어… 저기 빛나는 건 뭐지?' }]);
   } });
   if (G.flag('golemAsleep')) { golem.state = 'sleep'; golem.t = 99; golem.model.scale.setScalar(0.2); golem.mover.setEnabled(false); }
   G.addTrigger({
@@ -133,7 +133,7 @@ export function buildMine(G, { clearStage }) {
       await G.say([
         { name: '???', text: '쿠구구구… 누가 내 다이아몬드를 탐내느냐!' },
         { name: '도움말', text: `크리스털 골렘이에요! 앞에서는 망치가 안 통해요. 쿵 하고 내려찍은 뒤 잠깐 어지러워할 때, 등 뒤로 돌아가 분홍 크리스털을 세 번 쳐요! (${G.hint('roll')})` },
-      ]);
+      ], { stop: true });
       G.cam.release();
       G.toHost(golem, 'start');
     },

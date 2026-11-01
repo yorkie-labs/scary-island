@@ -15,13 +15,13 @@ export async function playIntro(G) {
     { name: narrator, text: '아주 먼 어느 나라에, 모험을 좋아하는 요크셔테리어 강아지 Yorkie가 살고 있었어요.' },
     { name: narrator, text: '어느 날 Yorkie는 오래된 탐험 지도를 발견했어요. 지도에는 아무도 가 본 적 없는 섬이 그려져 있었지요.' },
     { name: narrator, text: '섬의 이름은 SCARY ISLAND. "세상에서 가장 아름다운 보물이 잠들어 있는 곳."' },
-  ]);
+  ], { stop: true });
   await flight;
   sfx.whoosh();
   G.cam.shake(0.6);
   await G.say([
     { name: narrator, text: '작은 배를 타고 섬에 다가가던 순간, 거대한 파도가 몰려왔어요. 쾅! 배는 바위에 부딪혀 부서지고 말았어요.' },
-  ]);
+  ], { stop: true });
   await G.hud.fade(true);
   const p = G.player.position;
   G.cam.release();
@@ -32,7 +32,7 @@ export async function playIntro(G) {
   await G.say([
     { name: 'Yorkie', text: '으으… 여긴 어디지? 내 배는…?' },
     { name: '도움말', text: G.hint('move') },
-  ]);
+  ], { stop: true });
   G.cam.release();
   G.setFlag('awake');
   G.endCutscene();
@@ -61,9 +61,9 @@ export async function playEnding(G, { ship, dir }) {
     pm.position.copy(ship.position).setY(ship.position.y + 1.9);
   });
   G.cam.fly(start.clone().add(new THREE.Vector3(-dir.x * 8 + 6, 6, -dir.z * 8)), start.clone().setY(2), 2);
-  await G.say([{ name: 'Yorkie', text: '안녕, 무서운 섬! 다시는 안 올 거야~!' }]);
+  await G.say([{ name: 'Yorkie', text: '안녕, 무서운 섬! 다시는 안 올 거야~!' }], { stop: true });
   G.cam.fly(start.clone().add(new THREE.Vector3(-dir.x * 25, 18, -dir.z * 25)), start.clone().addScaledVector(dir, 40), 7);
-  await G.say([{ name: '이야기', text: 'Yorkie는 배를 타고 섬을 탈출했어요. 멀어지는 섬을 바라보며 휴, 안도의 한숨을 쉬었지요.' }]);
+  await G.say([{ name: '이야기', text: 'Yorkie는 배를 타고 섬을 탈출했어요. 멀어지는 섬을 바라보며 휴, 안도의 한숨을 쉬었지요.' }], { stop: true });
   await new Promise((r) => setTimeout(r, 2500));
 
   // the beach, one last time: a little pebble opens its eyes

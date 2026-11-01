@@ -24,6 +24,9 @@ export function createHud() {
   let lastObjective = '';
   let toastTimer = 0;
   let dialogQueue = null;
+  let speechNow = null, hushed = false, tipTimer = 0;
+  $('speech').addEventListener('pointerdown', (e) => { e.stopPropagation(); hud.skipSpeech(); });
+  $('tip-close').addEventListener('pointerdown', (e) => { e.stopPropagation(); clearTimeout(tipTimer); $('tip').classList.add('hidden'); });
 
   // minimap background, drawn once from the height field
   const mapImage = document.createElement('canvas');
@@ -242,6 +245,44 @@ export function createHud() {
       toastTimer = setTimeout(() => el.classList.remove('show'), ms);
     },
 
+    // Diablo III style talk: lines in a small panel that move on by
+    // themselves while Yorkie keeps playing (tap it to skip ahead). Help lines
+    // become a tip card that stays until read. Resolves when it is all said.
+    speech(lines) {
+      const queue = lines.map((l) => (typeof l === 'string' ? { text: l } : l));
+      return new Promise((resolve) => {
+        const next = () => {
+          clearTimeout(speechNow?.timer);
+          const l = queue.shift();
+          if (!l || hushed) { speechNow = null; $('speech').classList.add('hidden'); resolve(); return; }
+          if (l.name === '도움말') { hud.tip(l.text); next(); return; }
+          const ms = 2200 + 80 * l.text.length; // time for a child to read it
+          speechNow = { next, timer: setTimeout(next, ms) };
+          // just above the bar, wherever this screen's layout puts it
+          const barTop = $('bar').getBoundingClientRect().top;
+          $('speech').style.bottom = barTop > 0 ? `${innerHeight - barTop + 10}px` : '';
+          $('speech-name').textContent = l.name ?? '';
+          $('speech-text').textContent = l.text;
+          const bar = $('speech-time');
+          bar.style.transition = 'none'; bar.style.transform = 'scaleX(1)';
+          void bar.offsetWidth;
+          bar.style.transition = `transform ${ms}ms linear`; bar.style.transform = 'scaleX(0)';
+          $('speech').classList.remove('hidden', 'pop'); void $('speech').offsetWidth; $('speech').classList.add('pop');
+        };
+        next();
+      });
+    },
+    skipSpeech() { if (!speechNow) return false; sfx.click(); speechNow.next(); return true; },
+    // a big moment is coming: cut the chatter short, and say nothing until it starts
+    hush(on) { hushed = on; if (on) speechNow?.next(); },
+    tip(text) {
+      $('tip-text').textContent = text;
+      $('tip').classList.remove('hidden', 'pop'); void $('tip').offsetWidth; $('tip').classList.add('pop');
+      clearTimeout(tipTimer);
+      tipTimer = setTimeout(() => $('tip').classList.add('hidden'), Math.max(12000, 140 * text.length));
+    },
+
+    // A big moment (stop: true): the box that holds the game until read.
     // lines: [{ name, text }] or strings
     dialog(lines, done) {
       dialogQueue = { lines: lines.map((l) => (typeof l === 'string' ? { text: l } : l)), i: 0, done };

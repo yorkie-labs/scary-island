@@ -224,7 +224,7 @@ function buildGuardianArena(G, { clearStage }) {
       await G.say([
         { name: '섬의 수호자', text: '……누가 봉인을 건드리느냐……' },
         { name: '도움말', text: G.hint('devices') },
-      ]);
+      ], { stop: true });
       G.cam.release();
       guardian.wake();
     },
@@ -332,7 +332,7 @@ function buildGuardianArena(G, { clearStage }) {
     await G.say([
       { name: '섬의 수호자', text: '……빛이… 돌아왔구나. 작은 용사여… 이것을 가져가라……' },
       { name: 'Yorkie', text: '수호자가 잠들었어. 그리고… 봉인이 풀렸다!' },
-    ]);
+    ], { stop: true });
   }
 }
 

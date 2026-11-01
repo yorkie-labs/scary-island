@@ -279,7 +279,7 @@ function bindKeys(G, screens) {
   // Space: the next line of a dialogue, else use whatever is close by (a door,
   // a chest, a device); in the mine cart it is the hop
   input.on('Space', (e) => { if (!advance(e) && playing() && !G.riding?.()) G.interact(); });
-  input.on('Enter', (e) => advance(e));
+  input.on('Enter', (e) => { if (!advance(e)) hud.skipSpeech(); });
   input.on('KeyB', () => { if (playing()) G.player.act('bark'); });
   input.on('Escape', () => { if (screens.shopOpen) screens.closeShop(); else if (screens.menuOpen) screens.closeMenu(); else screens.openMenu(); });
   input.on('KeyH', () => { if (playing()) screens.openMenu(); });
