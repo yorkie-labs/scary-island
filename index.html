@@ -20,8 +20,8 @@
       <!-- Diablo II style interface bar (GDD §9.1 + D2): heart orb, skills, belt, battery orb -->
       <div id="bar">
         <div id="bar-top">
-          <span title="다이아몬드">💎 <b id="diamonds">0</b></span>
-          <span title="열쇠" id="keys-wrap" class="hidden">🗝️ <b id="keys">0</b></span>
+          <span title="다이아몬드"><i data-icon="diamond">💎</i> <b id="diamonds">0</b></span>
+          <span title="열쇠" id="keys-wrap" class="hidden"><i data-icon="key">🗝️</i> <b id="keys">0</b></span>
           <span id="parts"></span>
         </div>
         <div id="bar-row">
@@ -30,7 +30,7 @@
           <div id="slots"></div>
           <div id="belt"></div>
           <div class="skill" id="skill-right" data-key="Light"><span></span><small>R</small></div>
-          <div class="orb battery" id="battery-orb" title="손전등 배터리"><div class="fill"></div><span class="glyph">🔦</span><span class="num" id="battery-num"></span></div>
+          <div class="orb battery" id="battery-orb" title="손전등 배터리"><div class="fill"></div><span class="glyph" data-icon="flashlight">🔦</span><span class="num" id="battery-num"></span></div>
         </div>
       </div>
       <div id="prompt" class="hidden"></div>
@@ -149,10 +149,10 @@
       <!-- the right thumb: a big hammer, four skills on an arc around it.
            Potions are the belt in the bar; "use" is the ✋ prompt when near. -->
       <div id="touch-buttons">
-        <button data-key="Hammer" title="망치">🔨</button>
+        <button data-key="Hammer" title="망치" data-icon="hammer">🔨</button>
         <button data-key="Digit2" title="구르기">🌀</button>
         <button data-key="Digit3" title="점프">⤴</button>
-        <button data-key="Light" title="손전등">🔦</button>
+        <button data-key="Light" title="손전등" data-icon="flashlight">🔦</button>
         <button data-key="Digit1" title="냄새">👃</button>
       </div>
       <div id="touch-top">

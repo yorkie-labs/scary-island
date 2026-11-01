@@ -1,6 +1,7 @@
 import { BASE_HEARTS, maxPotions, ABILITY_TREATS, treatsEaten } from '../core/state.js';
 import { heightAt, ridgeAt, REGIONS, WORLD_HALF, regionAt, GATES } from '../world/map.js';
 import { sfx } from '../audio/sound.js';
+import { icon } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -12,7 +13,8 @@ export const ACTIONS = [
   { key: 'jump', icon: '⤴️', ko: '점프' },
 ];
 
-const PART_ICONS = { engine: '⚙️', fuel: '⛽', crystal: '🔮', shipKey: '🔑' };
+const PART_ICONS = { engine: '⚙️', fuel: '⛽', crystal: '🔮', shipKey: '🔑' }; // fallbacks for the drawn icons
+const PART_NAMES = { engine: '엔진 부품', fuel: '연료통', crystal: '에너지 크리스털', shipKey: '배의 열쇠' };
 
 export function createHud() {
   // clicking a hotbar slot, the potion belt or the flashlight icon presses its key
@@ -21,6 +23,8 @@ export function createHud() {
     const slot = e.target.closest('[data-key]');
     if (slot) hud.onKey?.(slot.dataset.key);
   });
+  // the fixed icons in the page: drawn from the item models
+  for (const el of document.querySelectorAll('[data-icon]')) el.innerHTML = icon(el.dataset.icon, el.textContent);
   let lastObjective = '';
   let toastTimer = 0;
   let dialogQueue = null;
@@ -78,10 +82,8 @@ export function createHud() {
       $('keys-wrap').classList.toggle('hidden', !state.flags.villageEntered || state.flags.ancientGateOpen);
 
       // skills: left click and right click, like D2's two attack icons
-      const hammer = state.items.hammer ? '🔨' : '🐾';
-      const light = state.items.flashlight ? '🔦' : '❔';
-      $('skill-left').querySelector('span').textContent = hammer;
-      $('skill-right').querySelector('span').textContent = light;
+      $('skill-left').querySelector('span').innerHTML = state.items.hammer ? icon('hammer', '🔨') : '🐾';
+      $('skill-right').querySelector('span').innerHTML = state.items.flashlight ? icon('flashlight', '🔦') : '❔';
       $('skill-left').title = '왼쪽 클릭: 이동 · 망치';
       $('skill-right').title = '오른쪽 클릭: 손전등';
 
@@ -102,10 +104,10 @@ export function createHud() {
         if (badge) b.dataset.badge = badge; else delete b.dataset.badge;
       }
       const max = maxPotions(state);
-      $('belt').innerHTML = Array.from({ length: max }, (_, i) => `<div class="slot ${i < state.potions ? '' : 'empty'}" data-key="Digit4" title="하트 포션 (4)">${i === 0 ? '<small>4</small>' : ''}🧪</div>`).join('');
+      $('belt').innerHTML = Array.from({ length: max }, (_, i) => `<div class="slot ${i < state.potions ? '' : 'empty'}" data-key="Digit4" title="하트 포션 (4)">${i === 0 ? '<small>4</small>' : ''}${icon('potion', '🧪')}</div>`).join('');
       // key items you just carry (the scissors open the vines by themselves)
-      const keyItems = state.items.scissors ? '<span class="have" title="가위 (덩굴 앞에서 저절로 써요)">✂️</span>' : '';
-      $('parts').innerHTML = keyItems + Object.entries(PART_ICONS).map(([k, icon]) => `<span class="${state.parts[k] ? 'have' : ''}" title="${k}">${icon}</span>`).join('');
+      const keyItems = state.items.scissors ? `<span class="have" title="가위 (덩굴 앞에서 저절로 써요)">${icon('scissors', '✂️')}</span>` : '';
+      $('parts').innerHTML = keyItems + Object.entries(PART_ICONS).map(([k, emoji]) => `<span class="${state.parts[k] ? 'have' : ''}" title="${PART_NAMES[k]}">${icon(k, emoji)}</span>`).join('');
 
       const text = objective ? objective.text : '섬 탈출 성공!';
       $('stage-name').textContent = objective ? `STAGE ${objective.stage.id} · ${objective.stage.name}` : 'THE END?';

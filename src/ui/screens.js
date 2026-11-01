@@ -1,6 +1,10 @@
 import { STAGES } from '../core/quests.js';
 import { UPGRADES, buyUpgrade, stars } from '../core/state.js';
 import { sfx, setMuted, isMuted } from '../audio/sound.js';
+import { icon } from './icons.js';
+
+// what each shop thing looks like (the stronger lamp is the flashlight)
+const SHOP_ICONS = { bag: 'bag', shoes: 'shoes', lamp: 'flashlight', bone: 'bone' };
 
 const $ = (id) => document.getElementById(id);
 
@@ -57,9 +61,9 @@ export function createScreens(G, { onRestart }) {
   function renderShop() {
     $('shop-items').innerHTML = Object.entries(UPGRADES).map(([k, u]) => {
       const owned = G.state.upgrades[k];
-      return `<div class="shop-item ${owned ? 'owned' : ''}"><h3>${u.ko}</h3><p>${u.desc}</p>
-        <button data-buy="${k}" ${owned ? 'disabled' : ''}>${owned ? '가지고 있어요' : `💎 ${u.cost}`}</button></div>`;
-    }).join('') + `<div class="shop-item"><h3>하트 포션</h3><p>하트 1개를 회복해요</p><button data-buy="potion">💎 3</button></div>`;
+      return `<div class="shop-item ${owned ? 'owned' : ''}">${icon(SHOP_ICONS[k], '', 'shop-ico')}<h3>${u.ko}</h3><p>${u.desc}</p>
+        <button data-buy="${k}" ${owned ? 'disabled' : ''}>${owned ? '가지고 있어요' : `${icon('diamond', '💎')} ${u.cost}`}</button></div>`;
+    }).join('') + `<div class="shop-item">${icon('potion', '', 'shop-ico')}<h3>하트 포션</h3><p>하트 1개를 회복해요</p><button data-buy="potion">${icon('diamond', '💎')} 3</button></div>`;
     $('shop-items').querySelectorAll('[data-buy]').forEach((b) => {
       b.onclick = () => {
         const k = b.dataset.buy;
