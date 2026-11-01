@@ -11,23 +11,56 @@ export function setupTouch(G) {
   // the "✋ use" prompt is a button too
   const prompt = document.getElementById('prompt');
   prompt.addEventListener('touchstart', (e) => { e.preventDefault(); G.input.trigger('Space', e); });
+  // The joystick floats: put a thumb down anywhere on the left half of the
+  // island and drag, and the stick appears under it. A quick tap there (no
+  // drag) is still "tap the ground to walk": nothing is cancelled until the
+  // finger moves, so the browser's tap reaches the game as usual.
   const stick = document.getElementById('stick'), knob = document.getElementById('knob');
+  const canvas = G.renderer.domElement;
+  canvas.style.touchAction = 'none';
   const v = G.input.virtual;
-  let id = null;
-  const R = 50;
+  const R = 50, DRAG = 12; // stick reach, and how far a thumb moves before it is a drag
+  let id = null, active = false;
+  const origin = { x: 0, y: 0 }, start = { x: 0, y: 0 };
+  const place = () => {
+    stick.style.left = `${origin.x - stick.offsetWidth / 2}px`;
+    stick.style.top = `${origin.y - stick.offsetHeight / 2}px`;
+    stick.style.bottom = 'auto';
+  };
   const move = (t) => {
-    const r = stick.getBoundingClientRect();
-    let dx = t.clientX - (r.left + r.width / 2), dy = t.clientY - (r.top + r.height / 2);
+    let dx = t.clientX - origin.x, dy = t.clientY - origin.y;
     const d = Math.hypot(dx, dy);
-    if (d > R) { dx = (dx / d) * R; dy = (dy / d) * R; }
+    // past its reach the stick follows the thumb, so turning around is quick
+    if (d > R) { origin.x += dx * (1 - R / d); origin.y += dy * (1 - R / d); dx = (dx / d) * R; dy = (dy / d) * R; place(); }
     knob.style.transform = `translate(${dx}px, ${dy}px)`;
     v.right = dx / R; v.forward = -dy / R; v.run = d > R * 0.9;
   };
-  stick.addEventListener('touchstart', (e) => { id = e.changedTouches[0].identifier; move(e.changedTouches[0]); e.preventDefault(); });
-  stick.addEventListener('touchmove', (e) => { for (const t of e.changedTouches) if (t.identifier === id) move(t); e.preventDefault(); });
-  const end = () => { id = null; v.forward = v.right = 0; v.run = false; knob.style.transform = ''; };
-  stick.addEventListener('touchend', end);
-  stick.addEventListener('touchcancel', end);
+  const touchOf = (e) => [...e.changedTouches].find((t) => t.identifier === id);
+  canvas.addEventListener('touchstart', (e) => {
+    const t = e.changedTouches[0];
+    if (id !== null || G.mode !== 'play' || t.clientX > innerWidth / 2) return;
+    id = t.identifier; active = false;
+    start.x = origin.x = t.clientX; start.y = origin.y = t.clientY;
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    const t = touchOf(e);
+    if (!t) return;
+    if (!active && Math.hypot(t.clientX - start.x, t.clientY - start.y) < DRAG) return;
+    if (!active) { active = true; stick.classList.add('held'); place(); }
+    e.preventDefault();
+    move(t);
+  }, { passive: false });
+  const end = (e) => {
+    if (!touchOf(e)) return;
+    if (active) e.preventDefault(); // a drag is not a tap: no walk order after it
+    id = null; active = false;
+    v.forward = v.right = 0; v.run = false;
+    knob.style.transform = '';
+    stick.classList.remove('held');
+    stick.style.left = stick.style.top = stick.style.bottom = ''; // back to its resting spot (a hint)
+  };
+  canvas.addEventListener('touchend', end, { passive: false });
+  canvas.addEventListener('touchcancel', end, { passive: false });
   for (const b of document.querySelectorAll('#touch-buttons button')) {
     b.addEventListener('touchstart', (e) => { e.preventDefault(); G.input.trigger(b.dataset.key, e); });
   }

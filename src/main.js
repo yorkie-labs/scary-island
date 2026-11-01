@@ -159,6 +159,8 @@ async function boot() {
   // boat circling slowly offshore
   $('loading-text').textContent = '';
   $('title').classList.add('live');
+  // the island is in: the buttons wake up (index.html starts them switched off)
+  for (const b of $('title-buttons').querySelectorAll('button')) b.disabled = false;
   if (saved) $('btn-continue').classList.remove('hidden');
   $('btn-new').textContent = saved ? '새로 시작' : '모험 시작!';
   const start = async (fresh) => {

@@ -96,6 +96,7 @@ button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.
 @keyframes bob { 50% { transform: translateY(-6px) rotate(-1deg); } }
 #title .tagline { font-size: 26px; margin: 0 0 20px; color: #fff; text-shadow: 0 2px 0 #1f6f8f, 0 0 12px rgba(0, 60, 90, 0.5); }
 #title button { box-shadow: 0 4px 0 #6b3a12; }
+#title button:disabled { opacity: 0.55; cursor: default; pointer-events: none; } /* still loading */
 #title #loading-text { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); opacity: 0.9; }
 @media (prefers-reduced-motion: reduce) { #title h1 { animation: none; } }
 #title-buttons, .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
@@ -112,7 +113,9 @@ kbd { display: inline-block; min-width: 22px; padding: 0 6px; border-radius: 6px
 
 /* touch controls (mobile, GDD §9.2) */
 #touch { position: fixed; inset: 0; pointer-events: none; z-index: 4; }
-#stick { position: absolute; left: 28px; bottom: 28px; width: 130px; height: 130px; border-radius: 50%; background: rgba(255, 255, 255, 0.15); pointer-events: auto; touch-action: none; }
+/* the joystick floats under the left thumb (ui/touch.js); resting, it is a faint hint */
+#stick { position: absolute; left: 28px; bottom: 28px; width: 130px; height: 130px; border-radius: 50%; background: rgba(255, 255, 255, 0.15); pointer-events: none; opacity: 0.45; transition: opacity 0.2s; }
+#stick.held { opacity: 1; transition: none; }
 #knob { position: absolute; left: 40px; top: 40px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255, 255, 255, 0.6); }
 #touch-buttons { position: absolute; right: 14px; bottom: 18px; display: grid; grid-template-columns: repeat(4, 54px); gap: 8px; pointer-events: auto; }
 #touch-buttons button { width: 54px; height: 54px; padding: 0; font-size: 22px; background: rgba(255, 255, 255, 0.75); }
