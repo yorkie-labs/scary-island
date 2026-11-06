@@ -13,6 +13,7 @@
 - `src/main.js` 부트·메인 루프·키 바인딩 / `src/core/` 게임 컨텍스트(G)·상태(save)·퀘스트(데이터)
 - `src/world/map.js` 섬 지형(순수 함수) / `src/world/regions/*.js` 스테이지별 빌더 / `src/world/models.js` Polyfork 모델 목록
 - `src/entities/` Yorkie·몬스터 / `src/systems/` 클릭 이동(pointer)·길찾기(nav)·손전등 / `src/player/` 컨트롤러·디아블로식 카메라 / `src/ui/` HUD·메뉴·터치
+- `src/render/` 조명(카메라 쪽 키 라이트·그림자 박스)·후처리(N8AO·블룸·색 보정, `?q=low`/메뉴 화질 토글)
 - 조작은 디아블로식 한 가지(마우스 + 숫자 1~4, Space, Tab, Esc). WASD·3인칭은 일부러 제거함
 - 디버그: 페이지에서 `window.G`
 

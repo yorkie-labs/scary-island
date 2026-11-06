@@ -105,3 +105,15 @@
   (crown and cheeks) and as volume (faceted clumps). Spikes all round a ball
   read as a pufferfish. Compare from the game's camera too, not only from the
   front.
+
+- Porting a look between games: copy the method, not the numbers. secret-cave
+  always has one night rig; here `look.setTime` rewrites the colours on every
+  region change, so a colour tweak has to run after each `setTime` (wrap it),
+  and the key's height should follow the time of day (30–50°) or dusk loses
+  its long shadows.
+- To tint a colour that may already lean the right way, multiply by a tint and
+  restore its brightness. Lerping toward a fixed colour made the night sky
+  *less* blue.
+- Eyes on a faceted head: project them with `DecalGeometry` onto the head's
+  own mesh. They follow the facets, can't bulge past the outline, and the far
+  eye hides behind the muzzle at 3/4 instead of floating as a disc.

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { addOutline } from './outline.js';
 
 // Yorkie, the Yorkshire terrier hero (GDD §3.1): golden-orange and dark brown
@@ -60,9 +61,24 @@ function mat(hex, extra = {}) {
   const key = hex + JSON.stringify(extra);
   if (!mats.has(key)) {
     const { roughness, metalness, ...toon } = extra; // (a toon material has neither)
-    mats.set(key, new THREE.MeshToonMaterial({ color: hex, gradientMap: toonRamp(), map: FUR.has(hex) ? furTexture() : null, ...toon }));
+    const m = new THREE.MeshToonMaterial({ color: hex, gradientMap: toonRamp(), map: FUR.has(hex) ? furTexture() : null, ...toon });
+    if (FUR.has(hex)) addRim(m);
+    mats.set(key, m);
   }
   return mats.get(key);
+}
+
+// A warm band of light round the fur's edge (fresnel, cut sharp like the
+// cel tones), so Yorkie stands out from the ground from the far camera and
+// at night (as secret-cave's Maltese).
+export const RIM = { color: new THREE.Color('#ffe6b8'), strength: 0.45, from: 0.62, to: 0.72 };
+function addRim(m) {
+  m.onBeforeCompile = (shader) => {
+    shader.uniforms.uRim = { value: RIM.color.clone().multiplyScalar(RIM.strength) };
+    shader.fragmentShader = `uniform vec3 uRim;\n${shader.fragmentShader}`.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+      totalEmissiveRadiance += uRim * smoothstep(${RIM.from.toFixed(2)}, ${RIM.to.toFixed(2)}, 1.0 - abs(dot(normal, normalize(vViewPosition))));`);
+  };
+  m.customProgramCacheKey = () => 'yorkieRim';
 }
 
 function mesh(geo, color, { x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1, extra } = {}) {
@@ -98,6 +114,39 @@ export function createHammer() {
   head.add(mesh(new THREE.BoxGeometry(0.08, 0.05, 0.09), '#8d9298', { x: -0.2, y: -0.01, rz: -1.0, extra: steel }));
   g.add(head);
   return g;
+}
+
+// The eye, painted once per side on a canvas (mirrored: the big highlight
+// toward the nose and up, as in the art) and laid on the face as a decal.
+const EYE_SIZE = 0.15; // m across (the head before its 1.12 scale)
+const EYE_TURN = 0.18; // rad each eye looks outward
+const eyeMats = new Map();
+function eyeMaterial(side) {
+  if (!eyeMats.has(side)) {
+    const map = eyeTexture(side); // (none outside a browser: a plain dark eye)
+    eyeMats.set(side, new THREE.MeshToonMaterial({
+      gradientMap: toonRamp(), map, color: map ? '#ffffff' : YORKIE_COLORS.eye,
+      transparent: true, alphaTest: 0.5, depthWrite: false,
+      polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
+    }));
+  }
+  return eyeMats.get(side);
+}
+function eyeTexture(side) {
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const C = YORKIE_COLORS;
+  const disc = (x, y, r, color) => { g.fillStyle = color; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); };
+  disc(64, 64, 62, '#2a160a'); // the thin dark rim
+  disc(64, 64, 56, '#8a5226'); // a warm brown iris
+  disc(64, 66, 39, C.eye); // the pupil
+  disc(64 - side * 17, 42, 16, '#ffffff'); // the big highlight (toward the nose, up)
+  disc(64 + side * 19, 86, 7, '#ffffff'); // and a little one
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
 }
 
 export function createYorkie() {
@@ -170,7 +219,8 @@ export function createYorkie() {
   // spikes: dark brown at the back and down the cheeks, golden on top, with a
   // few flame-like locks on the crown sweeping up and back. (Spikes all round
   // a ball made a pufferfish.)
-  head.add(mesh(new THREE.IcosahedronGeometry(0.25, 1), C.fur, { sx: 1.1, sy: 0.96, sz: 0.95 }));
+  const skull = mesh(new THREE.IcosahedronGeometry(0.25, 1), C.fur, { sx: 1.1, sy: 0.96, sz: 0.95 });
+  head.add(skull);
   const clump = (x, y, z, r, color, { sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0 } = {}) =>
     head.add(mesh(new THREE.IcosahedronGeometry(r, 0), color, { x, y, z, sx, sy, sz, rx, ry, rz }));
   // the fur mass: the back of the head, darker
@@ -204,14 +254,27 @@ export function createYorkie() {
   head.add(mesh(new THREE.IcosahedronGeometry(0.04, 0), C.nose, { y: -0.04, z: 0.325 }));
   // a little smile under the nose
   head.add(mesh(new THREE.TorusGeometry(0.03, 0.007, 4, 8, Math.PI), C.nose, { y: -0.1, z: 0.31, rz: Math.PI, sx: 1.2 }));
-  // big round eyes with a highlight
+  // big round eyes: painted on the faceted face as decals (projected onto
+  // the head's own facets), so they follow its shape and never bulge past
+  // its outline nor get cut by it from the side (as secret-cave's Maltese).
+  // A warm brown iris in a thin dark rim, a big pupil, two highlights. No
+  // outline (it would read as lashes). The pivot is the eye's centre: a
+  // blink squashes it.
   const eyes = [];
+  root.updateMatrixWorld(true);
+  const toHead = head.matrixWorld.clone().invert();
   for (const side of [-1, 1]) {
-    const eye = pivot('eye', side * 0.1, 0.03, 0.2);
-    eye.add(mesh(new THREE.SphereGeometry(0.07, 10, 8), '#8a5226', { sz: 0.6, extra: { roughness: 0.25 } })); // a warm brown iris
-    eye.add(mesh(new THREE.SphereGeometry(0.048, 10, 8), C.eye, { z: 0.016, sz: 0.6, extra: { roughness: 0.2 } })); // the pupil
-    eye.add(mesh(new THREE.SphereGeometry(0.024, 6, 4), '#ffffff', { x: side * -0.016, y: 0.026, z: 0.04, extra: { emissive: '#ffffff', emissiveIntensity: 0.5 } }));
-    eye.add(mesh(new THREE.SphereGeometry(0.01, 5, 3), '#ffffff', { x: side * 0.018, y: -0.022, z: 0.04, extra: { emissive: '#ffffff', emissiveIntensity: 0.5 } }));
+    const at = new THREE.Vector3(side * 0.1, 0.03, 0.2);
+    const eye = pivot('eye', at.x, at.y, at.z);
+    const world = at.clone().applyMatrix4(head.matrixWorld);
+    const turn = new THREE.Euler(0, side * EYE_TURN, 0); // (looking a little outward, as the face turns)
+    const g = new DecalGeometry(skull, world, turn, new THREE.Vector3(EYE_SIZE, EYE_SIZE, 0.2).multiplyScalar(head.scale.x));
+    g.applyMatrix4(toHead).translate(-at.x, -at.y, -at.z);
+    const m = new THREE.Mesh(g, eyeMaterial(side));
+    m.userData.noOutline = true;
+    m.castShadow = false;
+    m.receiveShadow = true;
+    eye.add(m);
     head.add(eye);
     eyes.push(eye);
   }
@@ -248,7 +311,18 @@ export function tintHoodie(root, hex) {
 export function createYorkieAnimator(root) {
   const r = root.userData.rig;
   let phase = 0, time = 0, blink = 2;
-  const lerp = THREE.MathUtils.lerp;
+  const lerp = THREE.MathUtils.lerp, clamp = THREE.MathUtils.clamp;
+  const earZ = r.ears.map((e) => e.rotation.z); // (how far each ear leans out at rest)
+  // springs (secondary motion, as secret-cave's Maltese): each follows a
+  // signal of the pose late and overshoots a little; the ears and the tail
+  // bend by how far it lags behind
+  const springs = { head: { x: 0, v: 0 }, lean: { x: 0, v: 0 }, bob: { x: 0, v: 0 } };
+  const follow = (s, target, dt, k = 70, c = 7) => {
+    if (!(dt > 0)) { s.x = target; s.v = 0; return 0; } // (a pose held still: at rest)
+    const n = Math.ceil(dt / 0.02), h = dt / n;
+    for (let i = 0; i < n; i++) { s.v += (k * (target - s.x) - c * s.v) * h; s.x += s.v * h; }
+    return clamp(s.x - target, -0.6, 0.6);
+  };
 
   return function animate(dt, { speed = 0, grounded = true, vy = 0, action = null, hidden = false, sitting = false, airborne = false }) {
     time += dt;
@@ -268,7 +342,7 @@ export function createYorkieAnimator(root) {
     r.torso.rotation.set(run * 0.18, 0, 0);
     r.neck.rotation.set(-run * 0.12 + Math.sin(time * 1.7) * 0.03, 0, 0);
     r.tail.rotation.set(0, 0, Math.sin(time * (moving ? 18 : 9)) * 0.5);
-    for (const [i, ear] of r.ears.entries()) ear.rotation.x = Math.sin(time * 3 + i) * 0.05 - run * 0.4;
+    for (const [i, ear] of r.ears.entries()) { ear.rotation.x = Math.sin(time * 3 + i) * 0.05 - run * 0.4; ear.rotation.z = earZ[i]; }
 
     if (!grounded) {
       const up = vy > 0;
@@ -363,5 +437,17 @@ export function createYorkieAnimator(root) {
         default: break;
       }
     }
+
+    // after the pose: the ears and the tail lag behind every nod, lean and
+    // bounce on springs, and flop out a little on a hop
+    const nod = follow(springs.head, r.torso.rotation.x + r.neck.rotation.x + r.head.rotation.x, dt, 60, 6);
+    const lean = follow(springs.lean, r.body.rotation.z + r.neck.rotation.y * 0.5, dt, 50, 5);
+    const bob = follow(springs.bob, r.body.position.y, dt, 120, 9);
+    for (const [i, ear] of r.ears.entries()) {
+      const side = i ? 1 : -1;
+      ear.rotation.x = clamp(ear.rotation.x + nod * 0.8, -0.9, 0.8);
+      ear.rotation.z = earZ[i] + clamp(lean * 0.6 - side * Math.min(0.15, Math.abs(bob) * 1.2), -0.4, 0.4);
+    }
+    r.tail.rotation.x = clamp(r.tail.rotation.x - bob * 2.5 + nod * 0.5, -0.4, 0.4);
   };
 }

@@ -9,3 +9,4 @@
 | 2026-11-01 | Release prep: review → fix → verify | [todo](20261101-release-prep-todo.md) | [lessons](20261031-scary-island-gdd-lessons.md) |
 | 2026-11-01 | Co-op multiplayer with Yorkie | [todo](20261101-multiplayer-todo.md) | [lessons](20261031-scary-island-gdd-lessons.md) |
 | 2026-11-01 | Playtest polish (phones, talk, Polly, Yorkie's look) | [todo](20261101-playtest-polish-todo.md) | [lessons](20261031-scary-island-gdd-lessons.md) |
+| 2026-11-06 | Cozy look + Yorkie's eyes and springs (from secret-cave) | [todo](20261106-cozy-look-todo.md) | [lessons](20261031-scary-island-gdd-lessons.md) |
