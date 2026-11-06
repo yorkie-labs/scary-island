@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { stage } from './vendor/polyfork/stage.mjs';
 import { createPost, chooseQuality, QUALITY_KEY } from './render/post.js';
 import { islandLight } from './render/light.js';
+
+const MAX_PIXEL_RATIO = 1.5;
 import { createPhysics } from './physics/physics.js';
 import { createIslandMesh, createSea } from './world/island.js';
 import { heightAt, regionAt } from './world/map.js';
@@ -45,7 +47,11 @@ async function boot() {
   let storedQuality = null;
   try { storedQuality = localStorage.getItem(QUALITY_KEY); } catch { /* private mode */ }
   const quality = chooseQuality({ search: location.search, saved: storedQuality, touch: matchMedia('(pointer: coarse)').matches, shortSide: Math.min(screen.width, screen.height) });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  // at most 1.5 pixels per CSS pixel: the post chain (AO, bloom, MSAA) runs
+  // over every pixel, and at 2× a retina screen made each frame 2-3× slower
+  // (scripts/scenarios/perf.js) for a difference the eye barely sees; the HUD
+  // is HTML, sharp either way
+  renderer.setPixelRatio(Math.min(devicePixelRatio, MAX_PIXEL_RATIO));
   renderer.setSize(innerWidth, innerHeight);
   $('app').appendChild(renderer.domElement);
   const scene = new THREE.Scene();

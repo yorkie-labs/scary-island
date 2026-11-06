@@ -76,11 +76,21 @@ export function islandLight(look, { quality = 'high' } = {}) {
   key.shadow.camera.near = 1;
   key.shadow.camera.far = KEY_DIST * 2 + 40;
   const center = new THREE.Vector3();
+  let last = null, lastDrop = 0.6;
   const out = {
     box, toKey: dir, mapSize, setQuality,
     update(feet, view, heightAt = null) {
       const focus = { x: feet.x, y: feet.y + 0.6, z: feet.z };
-      const drop = Math.max(0.6, heightAt ? viewDrop(view, focus, heightAt, { max: MAX_DROP }) : 0);
+      // (the ground search marches the view's corner rays over the height
+      // field, hundreds of lookups: again only once the lens has moved a metre
+      // or zoomed, turned or tilted)
+      const moved = !last || Math.hypot(focus.x - last.x, focus.y - last.y, focus.z - last.z) > 1
+        || Math.abs(view.dist - last.dist) > 0.5 || Math.abs(view.pitch - last.pitch) > 0.01 || Math.abs(view.yaw - last.yaw) > 0.01 || view.aspect !== last.aspect;
+      if (moved) {
+        last = { ...focus, dist: view.dist, pitch: view.pitch, yaw: view.yaw, aspect: view.aspect };
+        lastDrop = Math.max(0.6, heightAt ? viewDrop(view, focus, heightAt, { max: MAX_DROP }) : 0);
+      }
+      const drop = lastDrop;
       const need = shadowBounds(viewGroundCorners(view, drop).map((c) => ({ x: c.x, y: c.y + 0.6, z: c.z })), TO);
       // each side grows at once and shrinks only when well inside (a ridge
       // walked along does not flip the texel size back and forth)

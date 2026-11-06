@@ -1,9 +1,9 @@
 // Cozy look (tasks/20261106-cozy-look-todo.md): the island's post-processing
 // (pmndrs postprocessing + N8AO), ported from secret-cave's render/post.js:
-//   high: render (4× MSAA) → N8AO contact shadows (half res, cool blue) →
+//   high: render (MSAA: 4×, 2× on a dense screen) → N8AO contact shadows (half res, cool blue) →
 //         one effect pass: bloom (only what glows: lamps, the campfire, the
 //         flashlight, glowing mushrooms, gems), the colour grade, a vignette;
-//   low (`?q=low`): render (4× MSAA) → grade + vignette (no AO, no bloom).
+//   low (`?q=low`): render (MSAA) → grade + vignette (no AO, no bloom).
 // No tone mapping: the Polyfork models were made for plain sRGB output (ACES
 // washed them out here); the grade is a gentle look instead.
 // Transparent things (glows, the sea, faded trees) write no depth or are
@@ -50,6 +50,9 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 }
 `;
 
+/** MSAA samples for a pixel ratio: 4 on a 1× screen, 2 on a denser one. */
+export const msaaFor = (pixelRatio) => (pixelRatio > 1.01 ? 2 : 4);
+
 /** The grade's numbers (linear light), shared with the tests. */
 export const GRADE = { saturation: 1.1, lift: [0.008, 0.008, 0.02], warm: [1.04, 1.0, 0.95] };
 
@@ -71,7 +74,8 @@ class GradeEffect extends Effect {
  * frame of whatever scene and lens it is given, through the same buffers.
  */
 export function createPost(renderer, scene, camera, quality) {
-  const composer = new EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType, multisampling: 4 });
+  // (4× MSAA on a 1× screen; on a denser one 2× is enough: the pixels are smaller, and it halves the cost)
+  const composer = new EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType, multisampling: msaaFor(renderer.getPixelRatio()) });
   const renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);
   // (the menu's 화질 toggle switches live: the high chain's AO and bloom are

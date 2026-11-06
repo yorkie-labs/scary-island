@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { heightAt } from './map.js';
 
 // Polyfork models used on the island, by short key. `body` decides physics:
@@ -115,9 +116,60 @@ export async function loadModels(keys, onProgress) {
   let done = 0;
   await Promise.all(ids.map(async (id) => {
     const gltf = await loader.loadAsync(modelUrl(id));
-    sources.set(id, gltf.scene);
+    sources.set(id, bake(gltf.scene));
     onProgress?.(++done, ids.length);
   }));
+}
+
+// A model as one mesh per material (its parts' transforms baked in), so each
+// copy on the island is a handful of objects, not dozens: a fern-covered
+// boulder was 27 nodes and 13 draws (×3 with the shadow and AO passes), and
+// three.js walks every node every frame. Rigged models are left as they are
+// (their bones move the parts). Parts with several materials stay apart.
+export function bake(src) {
+  let skinned = false;
+  src.traverse((o) => { if (o.isSkinnedMesh) skinned = true; });
+  if (skinned) return src;
+  src.updateMatrixWorld(true);
+  const toRoot = src.matrixWorld.clone().invert();
+  const byMat = new Map(), loose = [];
+  src.traverse((o) => {
+    if (!o.isMesh) return;
+    if (Array.isArray(o.material)) { loose.push(o); return; }
+    if (!byMat.has(o.material)) byMat.set(o.material, []);
+    byMat.get(o.material).push(o);
+  });
+  const out = new THREE.Group();
+  out.name = src.name;
+  out.userData = { ...src.userData };
+  const m = new THREE.Matrix4();
+  const merge = (meshes) => {
+    const names = meshes.map((o) => new Set(Object.keys(o.geometry.attributes)));
+    const keep = [...names[0]].filter((k) => names.every((n) => n.has(k)));
+    const indexed = meshes.every((o) => o.geometry.index);
+    const geos = meshes.map((o) => {
+      let g = o.geometry.clone();
+      for (const k of Object.keys(g.attributes)) if (!keep.includes(k)) g.deleteAttribute(k);
+      for (const k of Object.keys(g.morphAttributes)) delete g.morphAttributes[k];
+      if (!indexed && g.index) g = g.toNonIndexed();
+      g.clearGroups();
+      return g.applyMatrix4(m.multiplyMatrices(toRoot, o.matrixWorld));
+    });
+    return geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
+  };
+  for (const [material, meshes] of byMat) {
+    const geo = merge(meshes);
+    if (!geo) { loose.push(...meshes); continue; } // (parts that would not merge: kept apart)
+    const mesh = new THREE.Mesh(geo, material);
+    mesh.name = meshes.length === 1 ? meshes[0].name : material.name;
+    out.add(mesh);
+  }
+  for (const o of loose) {
+    const mesh = new THREE.Mesh(o.geometry.clone().applyMatrix4(m.multiplyMatrices(toRoot, o.matrixWorld)), o.material);
+    mesh.name = o.name;
+    out.add(mesh);
+  }
+  return out;
 }
 
 export function instance(key) {
