@@ -1,16 +1,17 @@
-// Yorkie's eyes and springs (tasks/20261106-cozy-look-todo.md): the eyes are
-// decals on the face (on the head's facets, never bulging past them), and
-// the ears and tail lag behind the pose on springs that settle.
+// Yorkie's look (tasks/20261106-cozy-look-todo.md): the eyes are decals on
+// the face (on the fur ball's surface, never bulging past it), the coat is
+// black and tan where a Yorkshire terrier's is, and the ears and the tail
+// lag behind the pose on springs that settle.
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { createYorkie, createYorkieAnimator } from '../src/entities/yorkie.js';
 
-const SKULL = { r: 0.25, sx: 1.1, sy: 0.96, sz: 0.95 }; // (createYorkie's head ball)
+const SKULL = { r: 0.25, sx: 1.08, sy: 0.97, sz: 0.98, amp: 0.06 }; // (createYorkie's head ball, its fur noise)
 
 describe('the eyes', () => {
   const yorkie = createYorkie();
   const { head, eyes } = yorkie.userData.rig;
-  it('are two decals on the front of the face, lying on the head’s facets (no bulge, no gap)', () => {
+  it('are two decals on the front of the face, lying on the fur ball (no bulge, no gap)', () => {
     expect(eyes).toHaveLength(2);
     for (const eye of eyes) {
       const decal = eye.children.find((c) => c.isMesh);
@@ -20,10 +21,10 @@ describe('the eyes', () => {
       for (let i = 0; i < pos.count; i++) {
         v.fromBufferAttribute(pos, i).add(eye.position); // (head space)
         expect(v.z).toBeGreaterThan(0.1); // the front of the face
-        // the ellipsoid through the ball's corners: its facets lie inside it, and not far inside
+        // on the ball's surface: within its fur noise (the face is calmer, a little recessed)
         const k = Math.hypot(v.x / (SKULL.r * SKULL.sx), v.y / (SKULL.r * SKULL.sy), v.z / (SKULL.r * SKULL.sz));
-        expect(k).toBeLessThanOrEqual(1.0001);
-        expect(k).toBeGreaterThan(0.85);
+        expect(k).toBeLessThanOrEqual(1 + SKULL.amp + 0.01);
+        expect(k).toBeGreaterThan(0.9);
       }
     }
   });
@@ -40,6 +41,30 @@ describe('the eyes', () => {
       expect(decal.castShadow).toBe(false);
     }
     expect(head.children.length).toBeGreaterThan(0);
+  });
+});
+
+describe('the coat', () => {
+  const yorkie = createYorkie();
+  const skull = yorkie.userData.rig.head.children.find((c) => c.isMesh && c.geometry.attributes.color);
+  const pos = skull.geometry.attributes.position, col = skull.geometry.attributes.color;
+  // the vertex nearest a direction from the head's centre, and how bright its colour is
+  const at = (x, y, z) => {
+    const d = new THREE.Vector3(x, y, z).normalize(), v = new THREE.Vector3();
+    let best = -2, i0 = 0;
+    for (let i = 0; i < pos.count; i++) { const k = v.fromBufferAttribute(pos, i).normalize().dot(d); if (k > best) { best = k; i0 = i; } }
+    return { r: col.getX(i0), g: col.getY(i0), b: col.getZ(i0), lum: 0.2126 * col.getX(i0) + 0.7152 * col.getY(i0) + 0.0722 * col.getZ(i0) };
+  };
+  it('is black over the crown and the back of the head, tan on the lower face and the cheeks', () => {
+    for (const black of [at(0, 1, 0), at(0, 0.3, -1), at(0.6, 0.3, -0.6)]) expect(black.lum).toBeLessThan(0.06);
+    for (const tan of [at(0, -0.2, 1), at(0.7, -0.4, 0.4), at(-0.7, -0.4, 0.4)]) {
+      expect(tan.lum).toBeGreaterThan(0.15);
+      expect(tan.r).toBeGreaterThan(tan.b * 2); // (warm)
+    }
+  });
+  it('has a tan spot over each eye', () => {
+    for (const side of [-1, 1]) expect(at(side * 0.42, 0.5, 0.76).lum).toBeGreaterThan(0.15);
+    expect(at(0, 0.5, 0.86).lum).toBeLessThan(0.06); // (and black between them)
   });
 });
 

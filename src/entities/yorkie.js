@@ -1,85 +1,96 @@
 import * as THREE from 'three';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { addOutline } from './outline.js';
 
-// Yorkie, the Yorkshire terrier hero (GDD §3.1): golden-orange and dark brown
-// fur, big round brown eyes, a sky-blue hoodie, black cargo pants, black and
-// white sneakers and a big wooden hammer. Built from low-poly primitives in
-// the same flat-shaded style as the Polyfork catalogue, with pivots placed so
-// it can be animated by hand (no skeleton needed).
+// Yorkie, the Yorkshire terrier hero (GDD §3.1): a fluffy black-and-tan
+// puppy (after the user's photo, 2026-11-06): a round soft head, black on
+// the back and the crown, tan face, cheeks, brows and ears, big round glossy
+// black eyes, a small black nose, small upright ears with fringed tips. A
+// sky-blue hoodie, black cargo pants, black and white sneakers and a big
+// claw hammer. The clothes are flat-shaded primitives in the Polyfork style;
+// the fur is smooth and softly noisy (`fluffy`, as secret-cave's Maltese),
+// so it reads soft, not faceted. Pivots are placed so it animates by hand
+// (no skeleton); the ears and the tail sway on springs in the animator.
 
 export const YORKIE_COLORS = {
-  fur: '#e3a24f', furDark: '#6e4224', muzzle: '#f8e6c4', eye: '#3d220f', nose: '#1d1612',
-  hoodie: '#8fd3f4', hoodieDark: '#6bb6db', string: '#ffffff', silk: '#f2c27a',
+  tan: '#c98a4a', tanLight: '#e2b27a', black: '#38332f', earInner: '#e0a77c',
+  eye: '#0c0807', eyeRim: '#1a1210', nose: '#141010', mouth: '#3a2022',
+  hoodie: '#8fd3f4', hoodieDark: '#6bb6db', string: '#ffffff',
   pants: '#26262b', pocket: '#34343b', shoe: '#18181b', sole: '#f2f2f2',
   wood: '#b07a46', woodDark: '#7a5230', band: '#8c8f96',
 };
-
-// Cel shading, as in the character art: light falls in three flat tones
-// instead of a smooth gradient (the black outline is addOutline's).
-let ramp = null;
-function toonRamp() {
-  if (!ramp) {
-    ramp = new THREE.DataTexture(new Uint8Array([110, 190, 255]), 3, 1, THREE.RedFormat);
-    ramp.minFilter = ramp.magFilter = THREE.NearestFilter;
-    ramp.needsUpdate = true;
-  }
-  return ramp;
-}
-
-// Brush strokes of fur, painted once on a canvas and laid over the fur
-// colours, so the coat reads as fur and not as plastic.
-let furStrokes = null;
-function furTexture() {
-  if (furStrokes || typeof document === 'undefined') return furStrokes;
-  const c = document.createElement('canvas');
-  c.width = c.height = 128;
-  const g = c.getContext('2d');
-  g.fillStyle = '#ffffff';
-  g.fillRect(0, 0, 128, 128);
-  let seed = 7;
-  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < 90; i++) {
-    const x = rnd() * 128, y = rnd() * 128, len = 8 + rnd() * 14, bend = (rnd() - 0.5) * 6;
-    g.strokeStyle = rnd() < 0.7 ? 'rgba(90, 50, 20, 0.22)' : 'rgba(255, 240, 210, 0.35)';
-    g.lineWidth = 1 + rnd() * 1.5;
-    g.beginPath();
-    g.moveTo(x, y);
-    g.quadraticCurveTo(x + bend, y + len / 2, x + bend * 0.5, y + len);
-    g.stroke();
-  }
-  furStrokes = new THREE.CanvasTexture(c);
-  furStrokes.wrapS = furStrokes.wrapT = THREE.RepeatWrapping;
-  furStrokes.repeat.set(2, 2);
-  furStrokes.colorSpace = THREE.SRGBColorSpace;
-  return furStrokes;
-}
-const FUR = new Set();
 
 const mats = new Map();
 function mat(hex, extra = {}) {
   const key = hex + JSON.stringify(extra);
   if (!mats.has(key)) {
-    const { roughness, metalness, ...toon } = extra; // (a toon material has neither)
-    const m = new THREE.MeshToonMaterial({ color: hex, gradientMap: toonRamp(), map: FUR.has(hex) ? furTexture() : null, ...toon });
-    if (FUR.has(hex)) addRim(m);
+    const m = new THREE.MeshStandardMaterial({ color: hex, flatShading: true, roughness: 0.85, ...extra });
+    if (extra.vertexColors) addRim(m);
     mats.set(key, m);
   }
   return mats.get(key);
 }
-
-// A warm band of light round the fur's edge (fresnel, cut sharp like the
-// cel tones), so Yorkie stands out from the ground from the far camera and
-// at night (as secret-cave's Maltese).
-export const RIM = { color: new THREE.Color('#ffe6b8'), strength: 0.45, from: 0.62, to: 0.72 };
+// The fur: smooth, its colour (the black-and-tan pattern, the low spots a
+// touch darker) in the vertex colours, and a soft warm rim of light round its
+// edge (fresnel), so the dark coat stands out from the ground from the far
+// camera and at night.
+const FUR = { flatShading: false, roughness: 0.7, vertexColors: true };
+export const RIM = { color: new THREE.Color('#ffe2b0'), strength: 0.32, power: 2.6 };
 function addRim(m) {
   m.onBeforeCompile = (shader) => {
     shader.uniforms.uRim = { value: RIM.color.clone().multiplyScalar(RIM.strength) };
     shader.fragmentShader = `uniform vec3 uRim;\n${shader.fragmentShader}`.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-      totalEmissiveRadiance += uRim * smoothstep(${RIM.from.toFixed(2)}, ${RIM.to.toFixed(2)}, 1.0 - abs(dot(normal, normalize(vViewPosition))));`);
+      totalEmissiveRadiance += uRim * pow(1.0 - clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0), ${RIM.power.toFixed(2)});`);
   };
   m.customProgramCacheKey = () => 'yorkieRim';
 }
+
+// Soft fur: a smooth ball nudged in and out by a fine fixed noise, so its
+// outline is a little wispy and the light rolls softly over it (secret-cave's
+// Maltese). `paint(n)` gives the colour where the ball faces `n` (unit, from
+// its centre; default the colour 'tan'); `shape(v, n)` moves a vertex;
+// `calm(n)` 0…1 smooths the noise there (the face, where the eyes sit).
+const tmpColor = new THREE.Color();
+export function fluffy(r, { w = 24, h = 16, amp = 0.05, freq = 9, seed = 1, shade = 0.16, paint = null, shape = null, calm = null } = {}) {
+  let geo = new THREE.SphereGeometry(r, w, h);
+  geo.deleteAttribute('uv'); geo.deleteAttribute('normal');
+  geo = mergeVertices(geo);
+  let s = seed * 9301 + 49297;
+  const rand = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  const waves = Array.from({ length: 7 }, (_, i) => {
+    const k = new THREE.Vector3(rand() * 2 - 1, rand() * 2 - 1, rand() * 2 - 1).normalize();
+    return { k, f: freq * (i < 4 ? 1 : 2.3), a: i < 4 ? 1 : 0.45, ph: rand() * 6.28 };
+  });
+  const p = geo.attributes.position, v = new THREE.Vector3(), n = new THREE.Vector3(), col = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) {
+    n.fromBufferAttribute(p, i).normalize();
+    let q = 0;
+    for (const wv of waves) q += wv.a * Math.sin(n.dot(wv.k) * wv.f + wv.ph);
+    q /= 3.4; // (about -1…1)
+    if (calm) q *= 1 - calm(n);
+    v.copy(n).multiplyScalar(r * (1 + amp * q));
+    shape?.(v, n);
+    p.setXYZ(i, v.x, v.y, v.z);
+    const c = paint ? paint(n) : tmpColor.set(YORKIE_COLORS.tan);
+    const k = 1 - shade * (0.5 - 0.5 * q);
+    col[i * 3] = c.r * k; col[i * 3 + 1] = c.g * k; col[i * 3 + 2] = c.b * k;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  geo.computeBoundingSphere();
+  return geo;
+}
+const smooth = THREE.MathUtils.smoothstep;
+const WHITE = '#ffffff'; // (fur: its colour is in the vertex colours)
+const TAN = new THREE.Color(), BLACK = new THREE.Color(), LIGHT = new THREE.Color();
+/** The coat at `n`: black where `black` (0…1) says, tan elsewhere, lighter tan where `light` says. */
+function coat(black, light = 0) {
+  TAN.set(YORKIE_COLORS.tan); BLACK.set(YORKIE_COLORS.black); LIGHT.set(YORKIE_COLORS.tanLight);
+  return tmpColor.copy(TAN).lerp(LIGHT, light).lerp(BLACK, black);
+}
+const paintTan = () => coat(0);
+const paintBlack = () => coat(1);
 
 function mesh(geo, color, { x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1, extra } = {}) {
   const m = new THREE.Mesh(geo, mat(color, extra));
@@ -90,8 +101,6 @@ function mesh(geo, color, { x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1,
   m.receiveShadow = true;
   return m;
 }
-
-for (const k of ['fur', 'furDark', 'silk']) FUR.add(YORKIE_COLORS[k]);
 
 const pivot = (name, x = 0, y = 0, z = 0) => {
   const g = new THREE.Group();
@@ -117,15 +126,16 @@ export function createHammer() {
 }
 
 // The eye, painted once per side on a canvas (mirrored: the big highlight
-// toward the nose and up, as in the art) and laid on the face as a decal.
-const EYE_SIZE = 0.15; // m across (the head before its 1.12 scale)
-const EYE_TURN = 0.18; // rad each eye looks outward
+// toward the nose and up) and laid on the face as a decal: big, round,
+// glossy black, as a puppy's.
+const EYE_SIZE = 0.15; // m across (the head before its scale)
+const EYE_TURN = 0.2; // rad each eye looks outward
 const eyeMats = new Map();
 function eyeMaterial(side) {
   if (!eyeMats.has(side)) {
     const map = eyeTexture(side); // (none outside a browser: a plain dark eye)
-    eyeMats.set(side, new THREE.MeshToonMaterial({
-      gradientMap: toonRamp(), map, color: map ? '#ffffff' : YORKIE_COLORS.eye,
+    eyeMats.set(side, new THREE.MeshStandardMaterial({
+      map, color: map ? '#ffffff' : YORKIE_COLORS.eye, roughness: 0.15,
       transparent: true, alphaTest: 0.5, depthWrite: false,
       polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
     }));
@@ -139,11 +149,11 @@ function eyeTexture(side) {
   const g = c.getContext('2d');
   const C = YORKIE_COLORS;
   const disc = (x, y, r, color) => { g.fillStyle = color; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); };
-  disc(64, 64, 62, '#2a160a'); // the thin dark rim
-  disc(64, 64, 56, '#8a5226'); // a warm brown iris
-  disc(64, 66, 39, C.eye); // the pupil
-  disc(64 - side * 17, 42, 16, '#ffffff'); // the big highlight (toward the nose, up)
-  disc(64 + side * 19, 86, 7, '#ffffff'); // and a little one
+  disc(64, 64, 62, C.eyeRim); // the thin dark rim of skin
+  disc(64, 64, 56, '#2a1810'); // a very dark brown iris, only just seen
+  disc(64, 66, 44, C.eye); // the big pupil
+  disc(64 - side * 16, 40, 14, '#ffffff'); // the big highlight (toward the nose, up)
+  disc(64 + side * 18, 88, 6, '#e8ecf4'); // and a little one
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
@@ -182,13 +192,11 @@ export function createYorkie() {
   for (const side of [-1, 1]) {
     torso.add(mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.09, 4), C.string, { x: side * 0.035, y: 0.24, z: 0.15 }));
   }
-  // the fur bib spilling out of the hood at the chest
-  for (const [x, rz] of [[-0.05, 0.25], [0, 0], [0.05, -0.25]]) torso.add(mesh(new THREE.ConeGeometry(0.045, 0.11, 4), C.silk, { x, y: 0.27, z: 0.12, rx: Math.PI - 0.5, rz }));
-  // a fluffy tail peeking out under the hoodie
+  // the tan chest fur spilling out of the hood
+  torso.add(mesh(fluffy(0.07, { amp: 0.12, freq: 13, seed: 37, paint: () => coat(0, 0.3) }), WHITE, { y: 0.28, z: 0.11, sx: 1.2, sy: 0.8, sz: 0.6, extra: FUR }));
+  // a fluffy dark tail peeking out under the hoodie
   const tail = pivot('tail', 0, 0.02, -0.15);
-  tail.add(mesh(new THREE.IcosahedronGeometry(0.06, 0), C.furDark, { y: 0.05, z: -0.02, sy: 1.3, rx: -0.5 }));
-  tail.add(mesh(new THREE.IcosahedronGeometry(0.055, 0), C.fur, { y: 0.13, z: -0.04, sy: 1.3, rx: -0.2 }));
-  tail.add(mesh(new THREE.ConeGeometry(0.045, 0.1, 4), C.silk, { y: 0.21, z: 0.0, rx: 0.5 }));
+  tail.add(mesh(fluffy(0.06, { amp: 0.12, freq: 12, seed: 41, paint: paintBlack }), WHITE, { y: 0.1, z: -0.02, sy: 1.9, rx: -0.4, extra: FUR }));
   torso.add(tail);
 
   // Arms: hoodie sleeves with furry paws. The right paw holds the hammer.
@@ -196,7 +204,7 @@ export function createYorkie() {
   for (const side of [-1, 1]) {
     const arm = pivot(side < 0 ? 'armL' : 'armR', side * 0.18, 0.26, 0);
     arm.add(mesh(new THREE.CylinderGeometry(0.048, 0.05, 0.2, 6), C.hoodie, { y: -0.1 }));
-    arm.add(mesh(new THREE.IcosahedronGeometry(0.062, 0), C.fur, { y: -0.225 })); // a fluffy paw
+    arm.add(mesh(fluffy(0.06, { amp: 0.1, freq: 13, seed: 13 + side, paint: paintTan }), WHITE, { y: -0.225, extra: FUR })); // a fluffy tan paw
     torso.add(arm);
     arms[side < 0 ? 'L' : 'R'] = arm;
   }
@@ -214,46 +222,33 @@ export function createYorkie() {
   const head = pivot('head', 0, 0.22, 0);
   head.scale.setScalar(1.12); // the art's big head
   neck.add(head);
-  // The head, after the character art: a big mass of fur around a smooth tan
-  // face. The fur is built from chunky faceted clumps (low-poly fur), not
-  // spikes: dark brown at the back and down the cheeks, golden on top, with a
-  // few flame-like locks on the crown sweeping up and back. (Spikes all round
-  // a ball made a pufferfish.)
-  const skull = mesh(new THREE.IcosahedronGeometry(0.25, 1), C.fur, { sx: 1.1, sy: 0.96, sz: 0.95 });
-  head.add(skull);
-  const clump = (x, y, z, r, color, { sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0 } = {}) =>
-    head.add(mesh(new THREE.IcosahedronGeometry(r, 0), color, { x, y, z, sx, sy, sz, rx, ry, rz }));
-  // the fur mass: the back of the head, darker
-  // (the game looks from above and behind: golden on top, dark only lower down)
-  clump(0, -0.02, -0.08, 0.2, C.furDark, { sx: 1.0, sy: 0.92, sz: 0.85, rz: 0.3 });
-  clump(0, 0.11, -0.03, 0.225, C.fur, { sx: 1.02, sy: 0.9, sz: 0.95, rx: 0.4 });
-  for (const side of [-1, 1]) {
-    // the cheeks: a little darker fur at the sides, falling past the jaw (kept
-    // close to the face: bigger clumps made a mane)
-    clump(side * 0.2, -0.02, -0.03, 0.11, C.furDark, { sx: 0.75, sz: 1.0, rz: side * 0.6, ry: side * 0.4 });
-    clump(side * 0.17, -0.12, 0.02, 0.085, C.furDark, { sx: 0.8, sy: 1.15, rz: side * 0.9 });
-    clump(side * 0.13, -0.16, 0.12, 0.065, C.fur, { rz: side * 0.5 });
-    // a little V of fur over each eye (the brave look)
-    head.add(mesh(new THREE.BoxGeometry(0.075, 0.018, 0.02), '#c98a3e', { x: side * 0.1, y: 0.115, z: 0.225, rz: side * 0.35 }));
-  }
-  // the crown: flame-like locks standing up and sweeping back
-  const UP = new THREE.Vector3(0, 1, 0);
-  const lock = (x, y, z, dx, dy, dz, len, r, color) => {
-    const p = pivot('lock', x, y, z);
-    p.quaternion.setFromUnitVectors(UP, new THREE.Vector3(dx, dy, dz).normalize());
-    p.add(mesh(new THREE.ConeGeometry(r, len, 4), color, { y: len / 2, sz: 0.55 }));
-    head.add(p);
+  // The head: one soft round ball of fur, the black-and-tan coat painted
+  // on it (vertex colours, so the patches blend): black over the crown, the
+  // back and round the eyes; tan on the lower face, the cheeks, under the
+  // jaw and in a spot over each eye. The cheeks a little full; the face's
+  // fur calm, so the eyes sit clean.
+  const F = new THREE.Vector3(0, 0.05, 1).normalize();
+  const brows = [-1, 1].map((side) => new THREE.Vector3(side * 0.42, 0.5, 0.76).normalize());
+  const headCoat = (n) => {
+    const face = smooth(n.z, 0.3, 0.6) * (1 - smooth(n.y, -0.02, 0.14)); // (the lower front of the face)
+    const cheeks = smooth(-n.y, -0.12, 0.22) * smooth(n.z, -0.35, 0.05); // (down the cheeks, under the jaw)
+    const brow = Math.max(...brows.map((b) => smooth(n.dot(b), 0.955, 0.985)));
+    const tan = Math.max(face, cheeks, brow);
+    return coat(1 - tan, face * 0.35);
   };
-  // a crest of wide, short flames (a single tall one read as a horn)
-  lock(0, 0.2, 0.06, 0, 1, 0.1, 0.13, 0.11, C.silk);
-  lock(0.09, 0.19, 0.03, 0.45, 1, -0.1, 0.11, 0.1, C.silk);
-  lock(-0.09, 0.19, 0.03, -0.45, 1, -0.05, 0.11, 0.1, C.silk);
-  lock(0.05, 0.21, -0.07, 0.25, 1, -0.5, 0.1, 0.1, C.fur);
-  lock(-0.05, 0.21, -0.07, -0.25, 1, -0.5, 0.1, 0.1, C.fur);
-  head.add(mesh(new THREE.IcosahedronGeometry(0.13, 1), C.muzzle, { y: -0.08, z: 0.19, sx: 1.1, sy: 0.8, sz: 1.1 }));
-  head.add(mesh(new THREE.IcosahedronGeometry(0.04, 0), C.nose, { y: -0.04, z: 0.325 }));
-  // a little smile under the nose
-  head.add(mesh(new THREE.TorusGeometry(0.03, 0.007, 4, 8, Math.PI), C.nose, { y: -0.1, z: 0.31, rz: Math.PI, sx: 1.2 }));
+  const skull = mesh(fluffy(0.25, {
+    w: 40, h: 28, amp: 0.06, freq: 11, seed: 23, paint: headCoat,
+    calm: (n) => 0.8 * smooth(n.dot(F), 0.6, 0.85),
+    shape: (v, n) => {
+      const cheek = smooth(Math.abs(n.x), 0.3, 0.75) * smooth(-n.y, -0.25, 0.35) * smooth(n.z, -0.6, 0.2);
+      v.multiplyScalar(1 - 0.06 * smooth(n.dot(F), 0.6, 0.88) + 0.08 * cheek);
+    },
+  }), WHITE, { sx: 1.08, sy: 0.97, sz: 0.98, extra: FUR });
+  head.add(skull);
+  // a short whiskery tan muzzle, a small black button nose, a little smile
+  head.add(mesh(fluffy(0.085, { w: 20, h: 14, amp: 0.12, freq: 14, seed: 29, paint: () => coat(0, 0.4) }), WHITE, { y: -0.08, z: 0.2, sx: 1.25, sy: 0.8, extra: FUR }));
+  head.add(mesh(new THREE.SphereGeometry(0.03, 12, 8), C.nose, { y: -0.055, z: 0.283, sx: 1.3, sy: 0.9, sz: 0.9, extra: { flatShading: false, roughness: 0.3 } }));
+  head.add(mesh(new THREE.TorusGeometry(0.022, 0.005, 4, 10, Math.PI), C.mouth, { y: -0.098, z: 0.272, rz: Math.PI, sx: 1.2 }));
   // big round eyes: painted on the faceted face as decals (projected onto
   // the head's own facets), so they follow its shape and never bulge past
   // its outline nor get cut by it from the side (as secret-cave's Maltese).
@@ -278,20 +273,22 @@ export function createYorkie() {
     head.add(eye);
     eyes.push(eye);
   }
-  // big pointy ears leaning out, pink inside, darker at the edge
+  // upright puppy ears: broad soft V's of tan fur with rounded, fringed
+  // tips (pyramids read as a fox's, ovals as a bear's), turned a little
+  // out, lighter inside and toward the tips
+  const earShape = (v, n) => { const t = (n.y + 1) / 2; v.x *= 1 - 0.5 * t ** 1.6; };
   const ears = [];
   for (const side of [-1, 1]) {
-    const ear = pivot('ear', side * 0.19, 0.15, -0.02);
-    ear.rotation.set(0, side * 0.75, -side * 0.5); // turned out, so the pink shows from the side too
-    ear.add(mesh(new THREE.ConeGeometry(0.1, 0.25, 4), C.furDark, { y: 0.11, sz: 0.45 }));
-    ear.add(mesh(new THREE.ConeGeometry(0.085, 0.21, 4), C.fur, { y: 0.1, z: 0.012, sz: 0.4 }));
-    ear.add(mesh(new THREE.ConeGeometry(0.055, 0.15, 4), '#f2a99a', { y: 0.08, z: 0.025, sz: 0.3 }));
+    const ear = pivot('ear', side * 0.15, 0.17, -0.02);
+    ear.rotation.set(-0.1, side * 0.3, -side * 0.38);
+    ear.add(mesh(fluffy(0.07, { amp: 0.14, freq: 15, seed: 31 + side, shape: earShape, paint: (n) => coat(0, 0.5 * smooth(n.y, 0.3, 0.9)) }), WHITE, { y: 0.09, sx: 1.12, sy: 1.55, sz: 0.36, extra: FUR }));
+    ear.add(mesh(new THREE.SphereGeometry(0.045, 12, 8), C.earInner, { y: 0.075, z: 0.017, sx: 0.9, sy: 1.4, sz: 0.28, extra: { flatShading: false, roughness: 0.8 } }));
     head.add(ear);
     ears.push(ear);
   }
 
   root.userData.rig = { body, hips, torso, neck, head, legs, arms, hand, hammer, tail, ears, eyes };
-  addOutline(root, { thickness: 0.018, minSize: 0.05 });
+  addOutline(root, { thickness: 0.012, minSize: 0.05 });
   return root;
 }
 

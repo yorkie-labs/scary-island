@@ -47,8 +47,8 @@ await go(-2, 24); await wait(8000);
 P.state.heading = Math.PI / 4; // facing the default lens
 await wait(600);
 const p = P.position;
-const at = new THREE.Vector3(p.x, p.y + 0.55, p.z);
-for (const [name, ang, d, h] of [['front', Math.PI / 4, 2.2, 0.9], ['34', Math.PI / 4 + 0.75, 2.2, 0.9], ['side', Math.PI / 4 + Math.PI / 2, 2.2, 0.7], ['game', Math.PI / 4, 9, 6]]) {
+const at = new THREE.Vector3(p.x, p.y + 0.72, p.z);
+for (const [name, ang, d, h] of [['front', Math.PI / 4, 3, 1.1], ['34', Math.PI / 4 + 0.75, 3, 1.1], ['side', Math.PI / 4 + Math.PI / 2, 3, 1], ['back', Math.PI / 4 + Math.PI, 3, 1.3], ['game', Math.PI / 4, 9, 6]]) {
   const to = new THREE.Vector3(p.x + Math.sin(ang) * d, p.y + h, p.z + Math.cos(ang) * d);
   G.cam.fly(to, at, 0.01); await wait(500);
   await shot(`${tag}-yorkie-${name}`);
