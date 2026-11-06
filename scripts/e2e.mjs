@@ -1,17 +1,19 @@
 // Headless playtest driver: opens the game in a separate headless Chrome,
 // runs a scenario script (a JS file evaluated in the page) and saves
 // screenshots. Usage: node scripts/e2e.mjs <scenario.js> [outDir] [saveJson]
+// SIZE=1600x900: another window size (the default 1100×800), e.g. to check 16:9
 import puppeteer from 'puppeteer-core';
 import { readFileSync, mkdirSync } from 'node:fs';
 
 const [scenarioPath, outDir = '/tmp', savePath] = process.argv.slice(2);
 const url = process.env.GAME_URL ?? 'http://localhost:5179/';
+const [vw, vh] = (process.env.SIZE ?? '1100x800').split('x').map(Number);
 const browser = await puppeteer.launch({
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   headless: 'new',
   protocolTimeout: 900000,
-  args: ['--use-angle=metal', '--enable-unsafe-swiftshader', '--window-size=1100,800', '--autoplay-policy=no-user-gesture-required'],
-  defaultViewport: { width: 1100, height: 800 },
+  args: ['--use-angle=metal', '--enable-unsafe-swiftshader', `--window-size=${vw},${vh}`, '--autoplay-policy=no-user-gesture-required'],
+  defaultViewport: { width: vw, height: vh },
 });
 const page = await browser.newPage();
 const logs = [];

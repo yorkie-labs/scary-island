@@ -1,6 +1,8 @@
 import '@fontsource/jua'; // the Jua font, bundled: no third-party font server for a kids' game
 import * as THREE from 'three';
 import { stage } from './vendor/polyfork/stage.mjs';
+import { createPost, chooseQuality, QUALITY_KEY } from './render/post.js';
+import { islandLight } from './render/light.js';
 import { createPhysics } from './physics/physics.js';
 import { createIslandMesh, createSea } from './world/island.js';
 import { heightAt, regionAt } from './world/map.js';
@@ -37,7 +39,12 @@ async function boot() {
     $('loading-text').textContent = '이 브라우저나 기기에서는 3D 그림을 그릴 수 없어요. 다른 브라우저(크롬, 사파리, 엣지)로 열어 주세요.';
     return;
   }
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  // no MSAA on the canvas: the post chain renders into its own multisampled
+  // buffer (render/post.js); ?q=low: no AO, no bloom
+  const renderer = new THREE.WebGLRenderer({ antialias: false });
+  let storedQuality = null;
+  try { storedQuality = localStorage.getItem(QUALITY_KEY); } catch { /* private mode */ }
+  const quality = chooseQuality({ search: location.search, saved: storedQuality, touch: matchMedia('(pointer: coarse)').matches, shortSide: Math.min(screen.width, screen.height) });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
   $('app').appendChild(renderer.domElement);
@@ -47,8 +54,13 @@ async function boot() {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
+    post.setSize(innerWidth, innerHeight);
   });
   const look = stage(renderer, scene, { time: 'golden', shadowSpan: 50, far: 300 });
+  // the key from the camera's front-left, soft shadows in a box that fits the
+  // view, a cooler sky and a warmer ground at every time of day (render/light.js)
+  const light = islandLight(look, { quality });
+  const post = createPost(renderer, scene, camera, quality);
 
   const physics = await createPhysics();
   const island = createIslandMesh();
@@ -79,6 +91,11 @@ async function boot() {
   const hud = createHud();
   const input = createInput();
   const G = createGame({ scene, camera, renderer, look, physics, state, input, hud });
+  G.quality = quality; G.post = post;
+  G.setQuality = (q) => {
+    G.quality = q; post.setQuality(q); light.setQuality(q);
+    try { localStorage.setItem(QUALITY_KEY, q); } catch { /* private mode */ }
+  };
   // the ground under a point: the island's height field, or the cave floor
   // (y = 0) in the mine, which lies far off the island at x > 400
   G.groundAt = (x, z) => (x > 400 ? 0 : heightAt(x, z));
@@ -236,7 +253,8 @@ async function boot() {
     heroGhost.visible = iso && G.player.model.visible && !G.riding?.(); // the cart's sides hiding the legs is fine
     for (const [e, ghost] of monsterGhosts) ghost.visible = iso && !!e.active;
     look.update();
-    renderer.render(scene, camera);
+    { const lens = lensView(camera, G.player.position); light.update(lens.feet, lens.view, G.groundAt); }
+    post.render(dt);
 
     // HUD minimap and music mood, a few times a second
     musicTimer -= dt;
@@ -272,6 +290,20 @@ async function boot() {
   addEventListener('pagehide', saveNow);
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
   window.G = G; // for debugging and automated checks
+}
+
+// Where the lens looks (the point on Yorkie's hip level in the middle of
+// the screen, also in a cutscene's flight) and the lens round it, for the
+// shadow box (render/light.js, render/shadowbox.js).
+const lensDir = new THREE.Vector3(), lensAt = new THREE.Vector3();
+function lensView(camera, p) {
+  const c = camera.position;
+  camera.getWorldDirection(lensDir);
+  const t = lensDir.y < -0.05 ? (p.y + 0.6 - c.y) / lensDir.y : -1;
+  if (t > 0 && t < 400) lensAt.copy(c).addScaledVector(lensDir, t).setY(p.y);
+  else lensAt.copy(p);
+  const dx = c.x - lensAt.x, dy = c.y - lensAt.y - 0.6, dz = c.z - lensAt.z, flat = Math.hypot(dx, dz);
+  return { feet: lensAt, view: { dist: Math.hypot(flat, dy), pitch: Math.atan2(dy, flat), yaw: Math.atan2(dx, dz), fovDeg: camera.fov, aspect: camera.aspect } };
 }
 
 function bindKeys(G, screens) {

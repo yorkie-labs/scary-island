@@ -92,5 +92,5 @@ build with `VITE_SELF_HOST_MODELS=1 npm run build`.
 - Story & direction: Jiyu (daughter) · Hackerwins (dad)
 - 3D models: [Polyfork](https://polyfork.dev) (loaded from the Polyfork CDN at runtime; the files are not in this repository)
 - Font: [Jua](https://fonts.google.com/specimen/Jua) (SIL Open Font License, via `@fontsource/jua`)
-- Engine: [three.js](https://threejs.org), physics: [Rapier](https://rapier.rs)
+- Engine: [three.js](https://threejs.org), physics: [Rapier](https://rapier.rs), post-processing: [postprocessing](https://github.com/pmndrs/postprocessing) (zlib) and [N8AO](https://github.com/N8python/n8ao) (ISC)
 - Multiplayer sync: [Yorkie](https://yorkie.dev) (Apache-2.0, via `@yorkie-js/sdk`, on Yorkie Cloud)

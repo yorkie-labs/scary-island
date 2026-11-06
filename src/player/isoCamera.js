@@ -11,13 +11,13 @@ import * as THREE from 'three';
 // the top of the hero's head.
 export const ISO_YAW = Math.PI / 4;
 export const ISO_FOV = 35;
-const PITCH = THREE.MathUtils.degToRad(35);
-const DIST_MIN = 13, DIST_MAX = 30;
+export const ISO_PITCH = THREE.MathUtils.degToRad(35);
+export const DIST_MIN = 13, DIST_MAX = 30;
 const NEVER_FADE = new Set(['island', 'sea', 'sky', 'cave', 'caveUpper']);
 
 export function createIsoCamera(G) {
   const camera = G.camera;
-  const rig = { yaw: ISO_YAW, pitch: PITCH, distance: DIST_MAX }; // start zoomed all the way out
+  const rig = { yaw: ISO_YAW, pitch: ISO_PITCH, distance: DIST_MAX }; // start zoomed all the way out
   const focus = new THREE.Vector3();
   const offset = new THREE.Vector3();
   let shake = 0, override = null, fadeTimer = 0;

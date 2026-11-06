@@ -36,6 +36,7 @@ export function createScreens(G, { onRestart }) {
       }).join('');
       $('menu-controls').innerHTML = G.touch ? TOUCH_CONTROLS_HTML : CONTROLS_HTML;
       $('btn-mute').textContent = isMuted() ? '소리 켜기' : '소리 끄기';
+      $('btn-quality').textContent = qualityLabel();
       renderCoop();
       $('menu').classList.remove('hidden');
     },
@@ -153,6 +154,10 @@ export function createScreens(G, { onRestart }) {
   $('btn-resume').onclick = () => { screens.closeMenu(); screens.onResume?.(); };
   $('btn-shop-close').onclick = () => { screens.closeShop(); screens.onResume?.(); };
   $('btn-mute').onclick = () => { setMuted(!isMuted()); $('btn-mute').textContent = isMuted() ? '소리 켜기' : '소리 끄기'; };
+  // 화질 높음 (AO, bloom, a big shadow map) / 낮음 (phones start there:
+  // render/post.js chooseQuality); kept for the next visit
+  const qualityLabel = () => `화질: ${G.quality === 'low' ? '낮음' : '높음'}`;
+  $('btn-quality').onclick = () => { G.setQuality?.(G.quality === 'low' ? 'high' : 'low'); $('btn-quality').textContent = qualityLabel(); };
   // starting over wipes the save: ask with a second press (no native dialog)
   let restartArmed = -Infinity; // performance.now() starts at 0 with the page
   $('btn-restart').onclick = () => {
