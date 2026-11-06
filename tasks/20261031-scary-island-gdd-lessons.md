@@ -117,3 +117,15 @@
 - Eyes on a faceted head: project them with `DecalGeometry` onto the head's
   own mesh. They follow the facets, can't bulge past the outline, and the far
   eye hides behind the muzzle at 3/4 instead of floating as a disc.
+- Measure speed uncapped. Headless Chrome stops at 60 fps, so every effect
+  looked free; with `--disable-gpu-vsync --disable-frame-rate-limit` (e2e.mjs
+  `UNCAPPED=1`) and `DPR=2` the real cost showed: post-processing on a retina
+  screen doubled the frame time.
+- The scene's object count is a CPU cost of its own: three.js walks every
+  node on every render. Bake catalogue models into one mesh per material at
+  load.
+- The Vite dev server reloads open pages when a source file changes, and it
+  also watches a worktree inside the repo (`.claude/worktrees/…`). A headless
+  run started right after an edit, or while a fork works in a worktree, can
+  die with "Execution context was destroyed". Wait for the `page reload` line
+  in the Vite log first.
