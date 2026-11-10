@@ -45,7 +45,8 @@ export async function joinGame({ id, create = false, secret = false, profile }) 
   // its own key (the same key as the document breaks removing the document)
   const channel = new sdk.Channel(`${docKey(id)}-ch`);
   await client.attach(channel);
-  // (SDK 0.7.25: attach resolves a moment before the channel says attached)
+  // (attach resolves a moment before the channel says attached: the SDK marks
+  // it on the channel's first refresh)
   for (let i = 0; i < 50 && !channel.isAttached(); i++) await new Promise((r) => setTimeout(r, 100));
   const handlers = new Map(); // topic -> [fn]
   channel.subscribe('broadcast', (e) => { for (const fn of handlers.get(e.topic) ?? []) fn(e.payload); });

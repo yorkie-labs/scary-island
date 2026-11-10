@@ -5,7 +5,9 @@ let pending = null;
 export function connect() {
   pending ??= (async () => {
     const sdk = await import('@yorkie-js/sdk');
-    const client = new sdk.Client({ apiKey: import.meta.env.VITE_YORKIE_API_KEY });
+    // gRPC-web carries binary protobuf; the default Connect JSON base64s every
+    // payload and wraps each message in JSON (about a third more on the wire)
+    const client = new sdk.Client({ apiKey: import.meta.env.VITE_YORKIE_API_KEY, useGrpcWebTransport: true });
     await client.activate();
     return { sdk, client };
   })().catch((err) => { pending = null; throw err; });
